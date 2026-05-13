@@ -186,3 +186,12 @@
   #paused .p-sub   { font-size: 0.72rem; color: #5a6578; letter-spacing: 0.2em; margin-bottom: 2.2rem; }
   #paused .paused-actions { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
   .modal-card a { color: #008799; }
+
+  .lock-err-banner {
+    position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%); z-index: 25;
+    max-width: min(92vw, 38rem); padding: 0.65rem 1rem; margin: 0;
+    font-size: 0.72rem; line-height: 1.38; text-align: center;
+    color: #4a1515; background: #ffeaea; border: 1px solid #d9a0a0; border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+  .lock-err-banner.hidden { display: none; }

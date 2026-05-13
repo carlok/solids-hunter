@@ -17,10 +17,10 @@ function getSkyTexture() {
   c.height = 128;
   const g = c.getContext('2d');
   const grd = g.createLinearGradient(0, 0, 0, 128);
-  grd.addColorStop(0, '#5eb8ff');
-  grd.addColorStop(0.42, '#9fd8ff');
-  grd.addColorStop(0.78, '#c8e8ff');
-  grd.addColorStop(1, '#eaf4ff');
+  grd.addColorStop(0, '#2568c8');
+  grd.addColorStop(0.38, '#6ab0ea');
+  grd.addColorStop(0.72, '#b8daf8');
+  grd.addColorStop(1, '#f0f8ff');
   g.fillStyle = grd;
   g.fillRect(0, 0, 4, 128);
   _skyTex = new THREE.CanvasTexture(c);
@@ -29,13 +29,60 @@ function getSkyTexture() {
   return _skyTex;
 }
 
+let _cloudTex = null;
+function getCloudPuffTexture() {
+  if (_cloudTex) return _cloudTex;
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 128;
+  const g = c.getContext('2d');
+  const rg = g.createRadialGradient(64, 64, 0, 64, 64, 62);
+  rg.addColorStop(0, 'rgba(255,255,255,0.58)');
+  rg.addColorStop(0.4, 'rgba(255,255,255,0.18)');
+  rg.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = rg;
+  g.fillRect(0, 0, 128, 128);
+  _cloudTex = new THREE.CanvasTexture(c);
+  _cloudTex.minFilter = THREE.LinearFilter;
+  _cloudTex.magFilter = THREE.LinearFilter;
+  return _cloudTex;
+}
+
+/** Soft billboard clouds for outdoor arenas (depthWrite off, inside sky sphere). */
+function addSoftClouds(count, warmth) {
+  const tex = getCloudPuffTexture();
+  const tint = warmth > 0.5 ? 0xfff0e8 : 0xd8ecff;
+  for (let i = 0; i < count; i++) {
+    const tw = 10 + Math.random() * 16;
+    const th = 6 + Math.random() * 11;
+    const mat = new THREE.MeshBasicMaterial({
+      map: tex,
+      color: tint,
+      transparent: true,
+      opacity: 0.2 + Math.random() * 0.38,
+      depthWrite: false,
+      fog: true
+    });
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(tw, th), mat);
+    const ang = (i / count) * Math.PI * 2 + Math.random() * 1.1;
+    const rad = 52 + Math.random() * 52;
+    const y = 20 + Math.random() * 42;
+    m.position.set(Math.cos(ang) * rad, y, Math.sin(ang) * rad);
+    m.lookAt(0, y * 0.35 + 10, 0);
+    m.renderOrder = -4;
+    scene.add(m);
+    envMeshes.push(m);
+  }
+}
+
 function addSkySphere() {
   const sky = new THREE.Mesh(
     new THREE.SphereGeometry(150, 32, 24),
     new THREE.MeshBasicMaterial({
       map: getSkyTexture(),
       side: THREE.BackSide,
-      depthWrite: false
+      depthWrite: false,
+      fog: false
     })
   );
   sky.renderOrder = -5;
@@ -93,6 +140,9 @@ window.addEventListener('resize', onResize);
 // ═══════════════════════════════════════════
 //  CONTROLS
 // ═══════════════════════════════════════════
+// Use document.body (not the canvas): requestPointerLock on the canvas from a
+// <button> click often fails the user-activation chain in Chromium, so the lock
+// event never fires and the hunt overlay never dismisses.
 const controls = new THREE.PointerLockControls(camera, document.body);
 scene.add(controls.getObject());
 controls.getObject().position.set(0, 1.7, 0);
@@ -133,6 +183,16 @@ const navToggle  = document.getElementById('nav-toggle');
 const navDropdown = document.getElementById('nav-dropdown');
 const modalHelp  = document.getElementById('modal-help');
 const modalCredits = document.getElementById('modal-credits');
+const lockErrBanner = document.getElementById('lock-err-banner');
+
+function hideLockErrBanner() {
+  lockErrBanner.classList.add('hidden');
+  lockErrBanner.textContent = '';
+}
+function showLockErrBanner(text) {
+  lockErrBanner.textContent = text;
+  lockErrBanner.classList.remove('hidden');
+}
 
 window.addEventListener('keydown', e => {
   if (e.code === 'Escape') {
@@ -187,6 +247,7 @@ function goHome() {
   envBtn.disabled = true;
   envBtn.textContent = '\u2014 SELECT AN ENVIRONMENT \u2014';
   envScreen.classList.remove('hidden');
+  hideLockErrBanner();
   try { if (controls.isLocked) controls.unlock(); } catch (e) {}
   syncTopNav();
 }
@@ -239,13 +300,33 @@ envBtn.addEventListener('click', () => {
   showHuntScreen();
 });
 
+document.addEventListener('pointerlockerror', () => {
+  showLockErrBanner(
+    window.isSecureContext
+      ? 'Pointer lock was denied. Try another browser, disable extensions that block input, or open this page directly (not inside an iframe or embedded preview).'
+      : 'Pointer lock needs a secure page. Use http://localhost:PORT on this machine, or https://. A plain http:// URL to another computer’s IP is blocked in Chromium-based browsers.'
+  );
+});
+
 document.getElementById('start-btn').addEventListener('click', () => {
-  huntScreen.classList.add('hidden');
-  controls.lock();
+  if (!window.isSecureContext) {
+    showLockErrBanner(
+      'Pointer lock needs a secure page. Use http://localhost:PORT on this machine, or https://. A plain http:// URL to another computer’s IP is blocked in Chromium-based browsers.'
+    );
+    return;
+  }
+  try {
+    controls.lock();
+  } catch (err) { /* rare sync failure */ }
 });
 
 document.getElementById('resume-btn').addEventListener('click', () => {
-  pausedEl.classList.add('hidden');
+  if (!window.isSecureContext) {
+    showLockErrBanner(
+      'Pointer lock needs a secure page. Use http://localhost:PORT on this machine, or https://. A plain http:// URL to another computer’s IP is blocked in Chromium-based browsers.'
+    );
+    return;
+  }
   controls.lock();
 });
 
@@ -265,20 +346,30 @@ document.getElementById('change-env-btn').addEventListener('click', () => {
 });
 
 controls.addEventListener('lock', () => {
-  gameActive = true;
-  hudEl.classList.remove('hidden');
-  vigEl.classList.remove('hidden');
-  pausedEl.classList.add('hidden');
-  syncTopNav();
-  if (window.GameAudio) GameAudio.onEnterPlay();
+  try {
+    hideLockErrBanner();
+    huntScreen.classList.add('hidden');
+    gameActive = true;
+    hudEl.classList.remove('hidden');
+    vigEl.classList.remove('hidden');
+    pausedEl.classList.add('hidden');
+    syncTopNav();
+    if (window.GameAudio) GameAudio.onEnterPlay();
+  } catch (err) { /* avoid breaking pointer-lock success path */ }
 });
 
 controls.addEventListener('unlock', () => {
   gameActive = false;
   if (window.GameAudio) GameAudio.onLeavePlay();
-  if (!roundEndEl.classList.contains('hidden')) { syncTopNav(); return; }
-  if (!envScreen.classList.contains('hidden')) { syncTopNav(); return; }
-  if (!huntScreen.classList.contains('hidden')) { syncTopNav(); return; }
+  if (!roundEndEl.classList.contains('hidden')) {
+    syncTopNav(); return;
+  }
+  if (!envScreen.classList.contains('hidden')) {
+    syncTopNav(); return;
+  }
+  if (!huntScreen.classList.contains('hidden')) {
+    syncTopNav(); return;
+  }
   pausedEl.classList.remove('hidden');
   hudEl.classList.add('hidden');
   vigEl.classList.add('hidden');
@@ -340,6 +431,24 @@ function addMesh(geo, color, x, y, z, ry, isWall) {
   return m;
 }
 
+/** Slight per-surface hue from base (deterministic from salt so layouts stay stable). */
+function envTintHex(base, salt) {
+  const u = Math.sin(salt * 12.9898) * 43758.5453;
+  const v = Math.sin(salt * 78.233 + 2.1) * 43758.5453;
+  const da = (u - Math.floor(u) - 0.5) * 0.1;
+  const db = (v - Math.floor(v) - 0.5) * 0.09;
+  const c = new THREE.Color(base);
+  c.r = THREE.MathUtils.clamp(c.r + da, 0, 1);
+  c.g = THREE.MathUtils.clamp(c.g + db - da * 0.35, 0, 1);
+  c.b = THREE.MathUtils.clamp(c.b - db * 0.25 + da * 0.2, 0, 1);
+  return c.getHex();
+}
+
+function addWallBox(w, h, d, baseColor, x, y, z, ry) {
+  const salt = x * 31 + y * 17 + z * 13 + w * 2.7 + d * 2.1 + (ry || 0) * 47;
+  return addBox(w, h, d, envTintHex(baseColor, salt), x, y, z, ry, true);
+}
+
 // ═══════════════════════════════════════════
 //  ENVIRONMENTS
 // ═══════════════════════════════════════════
@@ -356,50 +465,55 @@ const ENVS = {
     addFloor(70, 0x2a3148);
 
     // Ceiling
-    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(70,70), new THREE.MeshLambertMaterial({color:0x3a4d68}));
-    ceil.rotation.x = Math.PI/2; ceil.position.y = 5.5; scene.add(ceil); envMeshes.push(ceil);
+    const ceil = new THREE.Mesh(
+      new THREE.PlaneGeometry(70, 70),
+      new THREE.MeshLambertMaterial({ color: envTintHex(0x3a4d68, 11) })
+    );
+    ceil.rotation.x = Math.PI / 2; ceil.position.y = 5.5; scene.add(ceil); envMeshes.push(ceil);
 
     // Outer walls
-    addBox(70,6,1,   0x343d52,  0,3, -35,0,true);
-    addBox(70,6,1,   0x343d52,  0,3,  35,0,true);
-    addBox(1, 6, 70, 0x343d52,-35,3,   0,0,true);
-    addBox(1, 6, 70, 0x343d52, 35,3,   0,0,true);
+    addWallBox(70, 6, 1, 0x343d52, 0, 3, -35, 0);
+    addWallBox(70, 6, 1, 0x343d52, 0, 3, 35, 0);
+    addWallBox(1, 6, 70, 0x343d52, -35, 3, 0, 0);
+    addWallBox(1, 6, 70, 0x343d52, 35, 3, 0, 0);
 
     // Interior walls
-    addBox(18,5,1.2, 0x3d4656, -9,2.5,-11,0,true);
-    addBox(18,5,1.2, 0x3d4656,  9,2.5, 11,0,true);
-    addBox(1.2,5,14, 0x3d4656,  7,2.5,-19,0,true);
-    addBox(1.2,5,14, 0x3d4656, -7,2.5, 19,0,true);
-    addBox(10,5,1.2, 0x3d4656, 19,2.5, -5,0,true);
-    addBox(10,5,1.2, 0x3d4656,-19,2.5,  5,0,true);
+    addWallBox(18, 5, 1.2, 0x3d4656, -9, 2.5, -11, 0);
+    addWallBox(18, 5, 1.2, 0x3d4656, 9, 2.5, 11, 0);
+    addWallBox(1.2, 5, 14, 0x3d4656, 7, 2.5, -19, 0);
+    addWallBox(1.2, 5, 14, 0x3d4656, -7, 2.5, 19, 0);
+    addWallBox(10, 5, 1.2, 0x3d4656, 19, 2.5, -5, 0);
+    addWallBox(10, 5, 1.2, 0x3d4656, -19, 2.5, 5, 0);
 
     // Pillars (no pillar at origin — player spawn corridor)
-    [[-9,0,-9],[9,0,-9],[-9,0,9],[9,0,9],
-     [-17,0,-17],[17,0,-17],[-17,0,17],[17,0,17]].forEach(([x,,z]) => {
-      addBox(1.5,5.5,1.5, 0x4a5568, x,2.75,z,0,true);
+    [[-9, 0, -9], [9, 0, -9], [-9, 0, 9], [9, 0, 9],
+      [-17, 0, -17], [17, 0, -17], [-17, 0, 17], [17, 0, 17]].forEach(([x,, z]) => {
+      addWallBox(1.5, 5.5, 1.5, 0x4a5568, x, 2.75, z, 0);
     });
 
     // Rubble
-    [[-4,0,-4],[6,0,8],[-13,0,-6],[15,0,7],[-8,0,15],[10,0,-17]].forEach(([x,,z]) => {
-      addBox(1.8,0.55,1.2, 0x2e3545, x,0.28,z, Math.random()*Math.PI, false);
+    [[-4,0,-4],[6,0,8],[-13,0,-6],[15,0,7],[-8,0,15],[10,0,-17]].forEach(([x,,z], i) => {
+      const salt = x * 101 + z * 73 + i * 19;
+      addBox(1.8, 0.55, 1.2, envTintHex(0x2e3545, salt), x, 0.28, z, Math.random() * Math.PI, false);
     });
   },
 
   forest() {
-    scene.background = new THREE.Color(0x284838);
-    scene.fog = new THREE.FogExp2(0x4a6a58, 0.018);
+    scene.background = new THREE.Color(0x1e2c24);
+    scene.fog = new THREE.FogExp2(0x3a5244, 0.016);
     addLight('ambient', 0x7ab896, 0.62);
     addLight('dir',    0xaaffcc, 0.62, 5, 15, 5);
     addLight('point',  0x66ff88, 0.75,  0, 6,  0, 65);
     addLight('point',  0x77ee99, 0.45, 16, 5,-16, 38);
 
-    addFloor(90, 0x1a2e22);
+    addFloor(90, 0x132618);
 
-    // Boundary walls (match floor, invisible-ish)
-    addBox(90,12,0.5, 0x1a2e22,  0,6,-45,0,true);
-    addBox(90,12,0.5, 0x1a2e22,  0,6, 45,0,true);
-    addBox(0.5,12,90, 0x1a2e22,-45,6,  0,0,true);
-    addBox(0.5,12,90, 0x1a2e22, 45,6,  0,0,true);
+    // Perimeter: cooler slate vs dark forest floor (reads as vertical boundary, not sky)
+    const forestBarrier = 0x2a4538;
+    addWallBox(90, 12, 0.5, forestBarrier, 0, 6, -45, 0);
+    addWallBox(90, 12, 0.5, forestBarrier, 0, 6, 45, 0);
+    addWallBox(0.5, 12, 90, forestBarrier, -45, 6, 0, 0);
+    addWallBox(0.5, 12, 90, forestBarrier, 45, 6, 0, 0);
 
     // Trees
     const treePos = [
@@ -410,18 +524,23 @@ const ENVS = {
     treePos.forEach(([x,,z]) => {
       const h = 7 + Math.random() * 7;
       const r = 0.25 + Math.random() * 0.3;
+      const trunkSalt = x * 131 + z * 97 + h * 3.1;
       const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(r, r*1.35, h, 7),
-        new THREE.MeshLambertMaterial({color:0x2a1007})
+        new THREE.CylinderGeometry(r, r * 1.35, h, 7),
+        new THREE.MeshLambertMaterial({ color: envTintHex(0x2a1007, trunkSalt) })
       );
-      trunk.position.set(x, h/2, z);
+      trunk.position.set(x, h / 2, z);
       trunk.castShadow = true;
       scene.add(trunk); envMeshes.push(trunk);
       wallBoxes.push(new THREE.Box3().setFromObject(trunk));
       // Canopy
       [0, 1.8, 3.5].forEach((off, i) => {
-        const cg = new THREE.ConeGeometry(r*(6-i*1.3), 3.2+i*0.3, 7);
-        const cm = new THREE.Mesh(cg, new THREE.MeshLambertMaterial({color:0x0e2e0e}));
+        const cg = new THREE.ConeGeometry(r * (6 - i * 1.3), 3.2 + i * 0.3, 7);
+        const leafSalt = x * 127 + z * 89 + off * 11 + i * 41;
+        const cm = new THREE.Mesh(
+          cg,
+          new THREE.MeshLambertMaterial({ color: envTintHex(0x0e2e0e, leafSalt) })
+        );
         cm.position.set(x, h - 0.5 + off, z);
         scene.add(cm); envMeshes.push(cm);
       });
@@ -430,8 +549,9 @@ const ENVS = {
     // Rocks
     [[-5,0,6],[12,0,-10],[-14,0,4],[8,0,-5],[1,0,11],[-7,0,-17]].forEach(([x,,z]) => {
       addMesh(
-        new THREE.DodecahedronGeometry(0.55+Math.random()*0.6,0),
-        0x3a4a3a, x, 0.4, z, 0, true
+        new THREE.DodecahedronGeometry(0.55 + Math.random() * 0.6, 0),
+        envTintHex(0x3a4a3a, x * 83 + z * 59),
+        x, 0.4, z, 0, true
       );
     });
   },
@@ -447,8 +567,11 @@ const ENVS = {
     addFloor(65, 0x1a2235);
 
     // Ceiling
-    const ceil2 = new THREE.Mesh(new THREE.PlaneGeometry(65,65), new THREE.MeshLambertMaterial({color:0x3a4d68}));
-    ceil2.rotation.x = Math.PI/2; ceil2.position.y = 6.5; scene.add(ceil2); envMeshes.push(ceil2);
+    const ceil2 = new THREE.Mesh(
+      new THREE.PlaneGeometry(65, 65),
+      new THREE.MeshLambertMaterial({ color: envTintHex(0x3a4d68, 19) })
+    );
+    ceil2.rotation.x = Math.PI / 2; ceil2.position.y = 6.5; scene.add(ceil2); envMeshes.push(ceil2);
 
     // Floor grid lines
     const lineMat = new THREE.MeshBasicMaterial({color:0x18183a});
@@ -460,28 +583,33 @@ const ENVS = {
     }
 
     // Outer walls
-    addBox(65,7,0.5, 0x2a3448,  0,3.5,-32,0,true);
-    addBox(65,7,0.5, 0x2a3448,  0,3.5, 32,0,true);
-    addBox(0.5,7,65, 0x2a3448,-32,3.5,  0,0,true);
-    addBox(0.5,7,65, 0x2a3448, 32,3.5,  0,0,true);
+    addWallBox(65, 7, 0.5, 0x2a3448, 0, 3.5, -32, 0);
+    addWallBox(65, 7, 0.5, 0x2a3448, 0, 3.5, 32, 0);
+    addWallBox(0.5, 7, 65, 0x2a3448, -32, 3.5, 0, 0);
+    addWallBox(0.5, 7, 65, 0x2a3448, 32, 3.5, 0, 0);
 
     // Glass partitions
     [[0.3,6,10,  10,3,  0],
      [0.3,6,10, -10,3,  0],
      [10, 6,0.3,  0,3, 10],
      [10, 6,0.3,  0,3,-10]].forEach(([w,h,d,x,y,z]) => {
+      const glassSalt = x * 19 + y * 7 + z * 13 + w * 3;
       const gm = new THREE.Mesh(
-        new THREE.BoxGeometry(w,h,d),
-        new THREE.MeshLambertMaterial({color:0x004466,transparent:true,opacity:0.28})
+        new THREE.BoxGeometry(w, h, d),
+        new THREE.MeshLambertMaterial({
+          color: envTintHex(0x004466, glassSalt),
+          transparent: true,
+          opacity: 0.28
+        })
       );
-      gm.position.set(x,y,z);
+      gm.position.set(x, y, z);
       scene.add(gm); envMeshes.push(gm);
       wallBoxes.push(new THREE.Box3().setFromObject(gm));
     });
 
     // Lab consoles
-    [[-7,0,7],[7,0,-7],[13,0,-13],[-13,0,13],[0,0,-19],[0,0,19],[-19,0,0],[19,0,0]].forEach(([x,,z]) => {
-      addBox(3,1.2,1.5, 0x121828, x,0.6,z, 0,false);
+    [[-7,0,7],[7,0,-7],[13,0,-13],[-13,0,13],[0,0,-19],[0,0,19],[-19,0,0],[19,0,0]].forEach(([x,,z], i) => {
+      addBox(3, 1.2, 1.5, envTintHex(0x121828, x * 67 + z * 53 + i * 17), x, 0.6, z, 0, false);
     });
 
     // Ceiling emissive strips
@@ -495,40 +623,44 @@ const ENVS = {
   },
 
   ruins() {
-    scene.background = new THREE.Color(0x4a4038);
-    scene.fog = new THREE.FogExp2(0x6a5a48, 0.012);
+    scene.background = new THREE.Color(0x453a32);
+    scene.fog = new THREE.FogExp2(0x584838, 0.011);
     addLight('ambient', 0xc8b8a8, 0.55);
     addLight('dir',    0xffaa77, 0.65, 10, 20, 5);
     addLight('point',  0xff6622, 0.58, -13, 4, -13, 52);
     addLight('point',  0xff8844, 0.48,  16, 3,  16, 40);
 
-    addFloor(90, 0x2a2218);
+    addFloor(90, 0x1a140e);
 
-    // Boundary
-    addBox(90,9,0.5, 0x2a2218,  0,4.5,-45,0,true);
-    addBox(90,9,0.5, 0x2a2218,  0,4.5, 45,0,true);
-    addBox(0.5,9,90, 0x2a2218,-45,4.5,  0,0,true);
-    addBox(0.5,9,90, 0x2a2218, 45,4.5,  0,0,true);
+    const ruinsStone = 0x4a2e18;
+    addWallBox(90, 9, 0.5, ruinsStone, 0, 4.5, -45, 0);
+    addWallBox(90, 9, 0.5, ruinsStone, 0, 4.5, 45, 0);
+    addWallBox(0.5, 9, 90, ruinsStone, -45, 4.5, 0, 0);
+    addWallBox(0.5, 9, 90, ruinsStone, 45, 4.5, 0, 0);
 
-    const wc = 0x4a2e18;
-    // Wall segments
-    addBox(10,4,0.9,wc,-11,2, -9, 0.2,true);
-    addBox(7, 6,0.9,wc,  7,3,-14,-0.1,true);
-    addBox(14,3,0.9,wc, 10,1.5, 7, 0.3,true);
-    addBox(8, 5,0.9,wc,-17,2.5,12,-0.2,true);
-    addBox(5, 2,0.9,wc,  1,1,  10, 0.5,true);
-    addBox(12,4,0.9,wc, -5,2, -22, 0.1,true);
-    addBox(9, 5,0.9,wc, 20,2.5, 0,  0,  true);
-    addBox(11,3,0.9,wc,-22,1.5,-7, 0.15,true);
-    addBox(7, 4,0.9,wc, -4,2,  19, 0.35,true);
-    addBox(8, 3,0.9,wc, 15,1.5,-21, 0.1,true);
+    const wc = ruinsStone;
+    addWallBox(10, 4, 0.9, wc, -11, 2, -9, 0.2);
+    addWallBox(7, 6, 0.9, wc, 7, 3, -14, -0.1);
+    addWallBox(14, 3, 0.9, wc, 10, 1.5, 7, 0.3);
+    addWallBox(8, 5, 0.9, wc, -17, 2.5, 12, -0.2);
+    addWallBox(5, 2, 0.9, wc, 1, 1, 10, 0.5);
+    addWallBox(12, 4, 0.9, wc, -5, 2, -22, 0.1);
+    addWallBox(9, 5, 0.9, wc, 20, 2.5, 0, 0);
+    addWallBox(11, 3, 0.9, wc, -22, 1.5, -7, 0.15);
+    addWallBox(7, 4, 0.9, wc, -4, 2, 19, 0.35);
+    addWallBox(8, 3, 0.9, wc, 15, 1.5, -21, 0.1);
 
-    // Broken columns
-    [[-5,0,5],[-10,0,10],[17,0,-7],[-17,0,-14],[2,0,-20],[12,0,17],[23,0,4],[-23,0,-5]].forEach(([x,,z]) => {
+    [[-5, 0, 5], [-10, 0, 10], [17, 0, -7], [-17, 0, -14], [2, 0, -20], [12, 0, 17], [23, 0, 4], [-23, 0, -5]].forEach(([x,, z]) => {
       const ch = 1.5 + Math.random() * 4;
-      addBox(1.2,ch,1.2, 0x5a3a20, x,ch/2,z,0,true);
+      addWallBox(1.2, ch, 1.2, 0x5a3a20, x, ch / 2, z, 0);
       if (Math.random() > 0.45) {
-        addBox(2,0.45,2, 0x4a2e18, x+(Math.random()-0.5)*0.4, ch+0.23, z+(Math.random()-0.5)*0.4, Math.random()*0.3, false);
+        const capX = x + (Math.random() - 0.5) * 0.4;
+        const capZ = z + (Math.random() - 0.5) * 0.4;
+        addBox(
+          2, 0.45, 2,
+          envTintHex(0x4a2e18, capX * 61 + capZ * 47 + ch * 2.1),
+          capX, ch + 0.23, capZ, Math.random() * 0.3, false
+        );
       }
     });
 
@@ -536,12 +668,14 @@ const ENVS = {
     [[6,0,-7],[-5,0,14],[14,0,10],[-10,0,-17],[2,0,7],[11,0,-5]].forEach(([x,,z]) => {
       for (let i = 0; i < 5; i++) {
         const s = 0.22 + Math.random() * 0.65;
+        const rx = x + (Math.random() - 0.5) * 2.5;
+        const rz = z + (Math.random() - 0.5) * 2.5;
         const rm = new THREE.Mesh(
-          new THREE.BoxGeometry(s, s*0.45, s*0.8),
-          new THREE.MeshLambertMaterial({color:0x3a2010})
+          new THREE.BoxGeometry(s, s * 0.45, s * 0.8),
+          new THREE.MeshLambertMaterial({ color: envTintHex(0x3a2010, rx * 51 + rz * 49 + i * 31 + s * 10) })
         );
-        rm.position.set(x+(Math.random()-0.5)*2.5, s*0.23, z+(Math.random()-0.5)*2.5);
-        rm.rotation.y = Math.random()*Math.PI;
+        rm.position.set(rx, s * 0.23, rz);
+        rm.rotation.y = Math.random() * Math.PI;
         scene.add(rm); envMeshes.push(rm);
       }
     });
@@ -558,6 +692,9 @@ const ENV_SPAWN = {
 function buildEnv(name) {
   ENVS[name]();
   addSkySphere();
+  if (name === 'forest' || name === 'ruins') {
+    addSoftClouds(name === 'forest' ? 26 : 20, name === 'ruins' ? 1 : 0);
+  }
   addSunLight();
   const spawn = ENV_SPAWN[name] || ENV_SPAWN.forest;
   controls.getObject().position.copy(spawn);
@@ -568,6 +705,7 @@ function buildEnv(name) {
 //  SOLIDS HUNTER — round prep overlay
 // ═══════════════════════════════════════════
 function showHuntScreen() {
+  hideLockErrBanner();
   envScreen.classList.add('hidden');
   score = 0;
   currentRule = generateHuntRule();
@@ -746,6 +884,40 @@ function clearAll() {
 // ═══════════════════════════════════════════
 const raycaster = new THREE.Raycaster();
 const CENT      = new THREE.Vector2(0, 0);
+const _traceMuzzle = new THREE.Vector3();
+const _traceDir = new THREE.Vector3();
+const _traceEnd = new THREE.Vector3();
+
+/** Brief line from muzzle to hit (or max range) so each shot is visible before the HUD flash. */
+function spawnShotTracer(start, end) {
+  const f32 = new Float32Array([start.x, start.y, start.z, end.x, end.y, end.z]);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(f32, 3));
+  const mat = new THREE.LineBasicMaterial({
+    color: 0xfff6d8,
+    transparent: true,
+    opacity: 0.92,
+    depthTest: true
+  });
+  const line = new THREE.Line(geo, mat);
+  line.frustumCulled = false;
+  line.renderOrder = 14;
+  scene.add(line);
+  const t0 = performance.now();
+  const dur = 100;
+  function fade(tNow) {
+    const u = (tNow - t0) / dur;
+    if (u >= 1) {
+      scene.remove(line);
+      geo.dispose();
+      mat.dispose();
+      return;
+    }
+    mat.opacity = 0.92 * (1 - u * u);
+    requestAnimationFrame(fade);
+  }
+  requestAnimationFrame(fade);
+}
 
 window.addEventListener('click', () => {
   if (!gameActive || !controls.isLocked) return;
@@ -753,15 +925,28 @@ window.addEventListener('click', () => {
   if (window.GameAudio) GameAudio.shoot();
 
   raycaster.setFromCamera(CENT, camera);
-  const liveMeshes = entities.filter(e=>e.alive&&!e.dying).map(e=>e.mesh);
-  const hits = raycaster.intersectObjects(liveMeshes, true);
-  if (!hits.length) return;
+  _traceDir.copy(raycaster.ray.direction).normalize();
+  _traceMuzzle.copy(raycaster.ray.origin).addScaledVector(_traceDir, 0.22);
+  const maxTrace = 135;
 
-  let obj = hits[0].object;
-  // outline is a child — walk up
-  if (obj.parent && entities.find(e=>e.mesh===obj.parent)) obj = obj.parent;
-  const ent = entities.find(e=>e.mesh===obj);
-  if (!ent || ent.dying || !ent.alive) return;
+  const liveMeshes = entities.filter(e => e.alive && !e.dying).map(e => e.mesh);
+  const hits = raycaster.intersectObjects(liveMeshes, true);
+
+  let traceEnd = _traceEnd.copy(_traceMuzzle).addScaledVector(_traceDir, maxTrace);
+  let ent = null;
+  if (hits.length) {
+    let obj = hits[0].object;
+    if (obj.parent && entities.find(e => e.mesh === obj.parent)) obj = obj.parent;
+    const e = entities.find(ev => ev.mesh === obj);
+    if (e && !e.dying && e.alive) {
+      ent = e;
+      traceEnd = hits[0].point.clone();
+    }
+  }
+
+  spawnShotTracer(_traceMuzzle, traceEnd);
+
+  if (!ent) return;
 
   if (ent.isMatch) {
     score += 10; matchLeft--;
@@ -771,7 +956,7 @@ window.addEventListener('click', () => {
     updateHUD();
     if (matchLeft <= 0) setTimeout(endRound, 700);
   } else {
-    score = Math.max(0, score-5);
+    score = Math.max(0, score - 5);
     doFlash('#ff2200', 0.42);
     if (window.GameAudio) GameAudio.hitWrong();
     updateHUD();

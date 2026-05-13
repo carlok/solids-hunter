@@ -1,6 +1,7 @@
 /**
  * Web Audio: WAV assets in assets/sounds/ with procedural fallbacks.
  * Exposes global GameAudio for main.js (loaded before main.js).
+ * No looping ambient bed during play (keeps the soundscape minimal).
  */
 (function (global) {
   'use strict';
@@ -13,13 +14,11 @@
     'hit_wrong',
     'round_win',
     'footstep',
-    'ambient',
   ];
 
   let ctx = null;
   /** @type {Record<string, AudioBuffer|null>} */
   const buffers = {};
-  let ambientNode = null;
   let footCooldown = 0;
 
   function getCtx() {
@@ -118,34 +117,6 @@
     }
   }
 
-  function stopAmbient() {
-    try {
-      if (ambientNode) {
-        ambientNode.stop();
-        ambientNode.disconnect();
-      }
-    } catch (e) {}
-    ambientNode = null;
-  }
-
-  function startAmbient() {
-    const c = getCtx();
-    if (!c) return;
-    resume();
-    stopAmbient();
-    const buf = buffers.ambient;
-    if (!buf) return;
-    const src = c.createBufferSource();
-    src.buffer = buf;
-    src.loop = true;
-    const g = c.createGain();
-    g.gain.value = 0.12;
-    src.connect(g);
-    g.connect(c.destination);
-    src.start(0);
-    ambientNode = src;
-  }
-
   async function load() {
     const c = getCtx();
     if (!c) return;
@@ -192,12 +163,8 @@
       footCooldown = 0.32;
       playBuffer('footstep', 0.22, 0.85 + Math.random() * 0.2);
     },
-    onEnterPlay() {
-      startAmbient();
-    },
-    onLeavePlay() {
-      stopAmbient();
-    },
+    onEnterPlay() {},
+    onLeavePlay() {},
   };
 
   document.body.addEventListener(

@@ -9,6 +9,10 @@ import {
 } from './lib/game-rules.js';
 import { xzOverlapSeparation } from './lib/entity-collision-2d.js';
 
+/** Bright azure sky (zenith → horizon) used for background, fog tint, and dome gradient in every arena. */
+const SKY_AZURE = 0x6ec8ff;
+const SKY_AZURE_HORIZON = 0xc4ecff;
+
 let _skyTex = null;
 function getSkyTexture() {
   if (_skyTex) return _skyTex;
@@ -17,10 +21,10 @@ function getSkyTexture() {
   c.height = 128;
   const g = c.getContext('2d');
   const grd = g.createLinearGradient(0, 0, 0, 128);
-  grd.addColorStop(0, '#2568c8');
-  grd.addColorStop(0.38, '#6ab0ea');
-  grd.addColorStop(0.72, '#b8daf8');
-  grd.addColorStop(1, '#f0f8ff');
+  grd.addColorStop(0, '#4ab8ff');
+  grd.addColorStop(0.35, '#6ec8ff');
+  grd.addColorStop(0.7, '#9bdcff');
+  grd.addColorStop(1, '#d4f2ff');
   g.fillStyle = grd;
   g.fillRect(0, 0, 4, 128);
   _skyTex = new THREE.CanvasTexture(c);
@@ -51,7 +55,7 @@ function getCloudPuffTexture() {
 /** Soft billboard clouds for outdoor arenas (depthWrite off, inside sky sphere). */
 function addSoftClouds(count, warmth) {
   const tex = getCloudPuffTexture();
-  const tint = warmth > 0.5 ? 0xfff0e8 : 0xd8ecff;
+  const tint = warmth > 0.5 ? 0xfff8f4 : 0xf0fbff;
   for (let i = 0; i < count; i++) {
     const tw = 10 + Math.random() * 16;
     const th = 6 + Math.random() * 11;
@@ -410,15 +414,50 @@ function addBox(w, h, d, color, x, y, z, ry, isWall, opacity) {
   return m;
 }
 
-function addFloor(size, color) {
-  const m = new THREE.Mesh(
+/** Deterministic PRNG for floor patch layout (stable per arena size + base color). */
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function rnd() {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Solid base floor plus a few flat colored rectangles (Minecraft-style patches), seeded by size + base.
+ * @returns {THREE.Mesh} main floor mesh
+ */
+function addFloor(size, baseColor) {
+  const main = new THREE.Mesh(
     new THREE.PlaneGeometry(size, size),
-    new THREE.MeshLambertMaterial({ color })
+    new THREE.MeshLambertMaterial({ color: baseColor })
   );
-  m.rotation.x = -Math.PI / 2;
-  m.receiveShadow = true;
-  scene.add(m); envMeshes.push(m);
-  return m;
+  main.rotation.x = -Math.PI / 2;
+  main.receiveShadow = true;
+  scene.add(main);
+  envMeshes.push(main);
+
+  const seed = (baseColor ^ Math.imul(size, 73856093)) >>> 0;
+  const rnd = mulberry32(seed);
+  const patchColors = [
+    0x6b8e23, 0x8b7355, 0xcd853f, 0x696969, 0x4682b4, 0x2f4f4f, 0x8fbc8f, 0xa0522d,
+    0x556b2f, 0xbc8f8f, 0xdaa520, 0x708090, 0x5f9ea0, 0x8b4513
+  ];
+  const n = 9 + Math.floor(rnd() * 8);
+  const margin = 3;
+  for (let i = 0; i < n; i++) {
+    const w = 2.2 + rnd() * 9;
+    const d = 2.2 + rnd() * 9;
+    const half = size * 0.5 - margin;
+    const x = (rnd() * 2 - 1) * Math.max(0, half - w * 0.5);
+    const z = (rnd() * 2 - 1) * Math.max(0, half - d * 0.5);
+    const col = patchColors[Math.floor(rnd() * patchColors.length)];
+    addBox(w, 0.055, d, col, x, 0.028, z, rnd() * Math.PI * 2, false);
+  }
+  return main;
 }
 
 function addMesh(geo, color, x, y, z, ry, isWall) {
@@ -455,8 +494,8 @@ function addWallBox(w, h, d, baseColor, x, y, z, ry) {
 const ENVS = {
 
   dungeon() {
-    scene.background = new THREE.Color(0x3a5580);
-    scene.fog = new THREE.Fog(0x5a7aa8, 14, 95);
+    scene.background = new THREE.Color(SKY_AZURE);
+    scene.fog = new THREE.Fog(SKY_AZURE_HORIZON, 18, 102);
     addLight('ambient', 0xa8c4e8, 0.55);
     addLight('point',  0xaabbff, 1.55,   0, 3.5,   0, 48);
     addLight('point',  0xffaa88, 1.0,  13, 3,  -13, 28);
@@ -499,8 +538,8 @@ const ENVS = {
   },
 
   forest() {
-    scene.background = new THREE.Color(0x1e2c24);
-    scene.fog = new THREE.FogExp2(0x3a5244, 0.016);
+    scene.background = new THREE.Color(SKY_AZURE);
+    scene.fog = new THREE.FogExp2(SKY_AZURE_HORIZON, 0.0105);
     addLight('ambient', 0x7ab896, 0.62);
     addLight('dir',    0xaaffcc, 0.62, 5, 15, 5);
     addLight('point',  0x66ff88, 0.75,  0, 6,  0, 65);
@@ -557,8 +596,8 @@ const ENVS = {
   },
 
   lab() {
-    scene.background = new THREE.Color(0x345074);
-    scene.fog = new THREE.Fog(0x6a8cc8, 18, 88);
+    scene.background = new THREE.Color(SKY_AZURE);
+    scene.fog = new THREE.Fog(SKY_AZURE_HORIZON, 22, 92);
     addLight('ambient', 0xb8d4f0, 0.52);
     addLight('point',  0x55eeff, 1.25,   0, 5,   0, 58);
     addLight('point',  0xffffff, 0.55,  15, 4,  15, 32);
@@ -588,19 +627,15 @@ const ENVS = {
     addWallBox(0.5, 7, 65, 0x2a3448, -32, 3.5, 0, 0);
     addWallBox(0.5, 7, 65, 0x2a3448, 32, 3.5, 0, 0);
 
-    // Glass partitions
+    // Solid partition panels (opaque — no see-through glass)
     [[0.3,6,10,  10,3,  0],
      [0.3,6,10, -10,3,  0],
      [10, 6,0.3,  0,3, 10],
      [10, 6,0.3,  0,3,-10]].forEach(([w,h,d,x,y,z]) => {
-      const glassSalt = x * 19 + y * 7 + z * 13 + w * 3;
+      const panelSalt = x * 19 + y * 7 + z * 13 + w * 3;
       const gm = new THREE.Mesh(
         new THREE.BoxGeometry(w, h, d),
-        new THREE.MeshLambertMaterial({
-          color: envTintHex(0x004466, glassSalt),
-          transparent: true,
-          opacity: 0.28
-        })
+        new THREE.MeshLambertMaterial({ color: envTintHex(0x4a6a8a, panelSalt) })
       );
       gm.position.set(x, y, z);
       scene.add(gm); envMeshes.push(gm);
@@ -623,8 +658,8 @@ const ENVS = {
   },
 
   ruins() {
-    scene.background = new THREE.Color(0x453a32);
-    scene.fog = new THREE.FogExp2(0x584838, 0.011);
+    scene.background = new THREE.Color(SKY_AZURE);
+    scene.fog = new THREE.FogExp2(SKY_AZURE_HORIZON, 0.009);
     addLight('ambient', 0xc8b8a8, 0.55);
     addLight('dir',    0xffaa77, 0.65, 10, 20, 5);
     addLight('point',  0xff6622, 0.58, -13, 4, -13, 52);
@@ -887,33 +922,53 @@ const CENT      = new THREE.Vector2(0, 0);
 const _traceMuzzle = new THREE.Vector3();
 const _traceDir = new THREE.Vector3();
 const _traceEnd = new THREE.Vector3();
+const _traceMid = new THREE.Vector3();
+const _traceBeamDir = new THREE.Vector3();
+const _yUp = new THREE.Vector3(0, 1, 0);
 
-/** Brief line from muzzle to hit (or max range) so each shot is visible before the HUD flash. */
+/**
+ * Bright beam from muzzle to hit (or max range). WebGL line width is often ~1px and gets lost in fog / tone mapping,
+ * so we use a thin emissive cylinder + additive pass drawn without depth test.
+ */
 function spawnShotTracer(start, end) {
-  const f32 = new Float32Array([start.x, start.y, start.z, end.x, end.y, end.z]);
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(f32, 3));
-  const mat = new THREE.LineBasicMaterial({
-    color: 0xfff6d8,
+  _traceBeamDir.subVectors(end, start);
+  const len = _traceBeamDir.length();
+  if (len < 0.04) return;
+  _traceBeamDir.multiplyScalar(1 / len);
+  _traceMid.addVectors(start, end).multiplyScalar(0.5);
+
+  const geo = new THREE.CylinderGeometry(0.055, 0.028, len, 10, 1, false);
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0xa8ffff,
     transparent: true,
-    opacity: 0.92,
-    depthTest: true
+    opacity: 1,
+    depthTest: false,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    fog: false
   });
-  const line = new THREE.Line(geo, mat);
-  line.frustumCulled = false;
-  line.renderOrder = 14;
-  scene.add(line);
+  const beam = new THREE.Mesh(geo, mat);
+  beam.position.copy(_traceMid);
+  if (Math.abs(_traceBeamDir.dot(_yUp)) > 0.995) {
+    beam.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), _traceBeamDir.y > 0 ? 0 : Math.PI);
+  } else {
+    beam.quaternion.setFromUnitVectors(_yUp, _traceBeamDir);
+  }
+  beam.frustumCulled = false;
+  beam.renderOrder = 1000;
+  scene.add(beam);
+
   const t0 = performance.now();
-  const dur = 100;
+  const dur = 130;
   function fade(tNow) {
     const u = (tNow - t0) / dur;
     if (u >= 1) {
-      scene.remove(line);
+      scene.remove(beam);
       geo.dispose();
       mat.dispose();
       return;
     }
-    mat.opacity = 0.92 * (1 - u * u);
+    mat.opacity = 1 - u * u;
     requestAnimationFrame(fade);
   }
   requestAnimationFrame(fade);

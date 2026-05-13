@@ -94,11 +94,15 @@
 <!-- HUD -->
 <div id="hud" class="hidden">
   <div id="xhair"></div>
-  <div id="hud-left">
-    <div class="lbl">SCORE</div>
-    <div class="val" id="score-el">0</div>
-    <div class="lbl" style="margin-top:0.5rem">TARGETS</div>
-    <div class="val" id="targets-el">0</div>
+  <div id="hud-left" class="hud-points" aria-label="Score and targets">
+    <div class="hud-stat">
+      <div class="lbl">SCORE</div>
+      <div class="val" id="score-el">0</div>
+    </div>
+    <div class="hud-stat">
+      <div class="lbl">TARGETS LEFT</div>
+      <div class="val" id="targets-el">0</div>
+    </div>
   </div>
   <div id="hud-rule">
     <div class="lbl">RULE</div>

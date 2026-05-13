@@ -144,9 +144,50 @@
   #xhair::before { width: 2px; height: 100%; left: 50%; transform: translateX(-50%); }
   #xhair::after  { height: 2px; width: 100%; top: 50%; transform: translateY(-50%); }
 
-  #hud-left { position: absolute; top: 1.2rem; left: 1.4rem; line-height: 1.8; }
-  #hud-left .lbl { color: rgba(255,255,255,0.55); font-size: 0.65rem; letter-spacing: 0.25em; }
-  #hud-left .val { color: #7df9ff; font-size: 1.4rem; text-shadow: 0 0 12px rgba(0,0,0,0.4); }
+  /* Score + targets: bottom-left panel, high contrast for pointer-lock play */
+  #hud-left.hud-points {
+    position: absolute;
+    bottom: 1.1rem;
+    left: 1.1rem;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 1.25rem;
+    padding: 0.75rem 1rem 0.85rem;
+    line-height: 1.15;
+    background: rgba(8, 12, 22, 0.88);
+    border: 2px solid rgba(255, 255, 255, 0.42);
+    border-radius: 12px;
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.5),
+      0 8px 28px rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(10px);
+  }
+  #hud-left .hud-stat {
+    min-width: 5.5rem;
+    padding: 0.15rem 0.35rem 0;
+  }
+  #hud-left .lbl {
+    color: #e8f2ff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+    margin-bottom: 0.35rem;
+  }
+  #hud-left .val {
+    color: #ffffff;
+    font-size: clamp(1.85rem, 4.2vw, 2.6rem);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    text-shadow:
+      0 0 1px #000,
+      0 2px 0 rgba(0, 0, 0, 0.85),
+      0 0 24px rgba(100, 210, 255, 0.55);
+  }
 
   #hud-rule { position: absolute; top: 1.2rem; right: 1.4rem; text-align: right; }
   #hud-rule .lbl { color: rgba(255,255,255,0.55); font-size: 0.62rem; letter-spacing: 0.25em; }
@@ -159,11 +200,29 @@
     background: rgba(0,0,0,0.25);
   }
 
+  /* Kept off bottom-left so it does not cover the score panel */
   #hud-hint {
-    position: absolute; bottom: 1rem; left: 50%;
-    transform: translateX(-50%);
-    font-size: 0.62rem; color: rgba(255,255,255,0.45); letter-spacing: 0.15em;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    position: absolute;
+    bottom: 1rem;
+    right: 1.1rem;
+    left: auto;
+    transform: none;
+    max-width: min(52vw, 20rem);
+    text-align: right;
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.72);
+    letter-spacing: 0.12em;
+    line-height: 1.35;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  }
+
+  @media (max-width: 520px) {
+    #hud-left.hud-points {
+      flex-direction: column;
+      gap: 0.65rem;
+      padding: 0.65rem 0.85rem 0.75rem;
+    }
+    #hud-left .hud-stat { min-width: 0; }
   }
 
   #vignette {

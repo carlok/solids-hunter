@@ -185,7 +185,18 @@ const vigEl      = document.getElementById('vignette');
 const ruleDisp   = document.getElementById('rule-disp');
 const scoreEl    = document.getElementById('score-el');
 const targetsEl  = document.getElementById('targets-el');
-const hudBadge   = document.getElementById('hud-badge');
+const hudRuleText  = document.getElementById('hud-rule-text');
+const hudRuleStrip = document.getElementById('hud-rule-strip');
+
+function syncHudRuleStrip() {
+  if (!hudRuleText || !hudRuleStrip) return;
+  hudRuleText.textContent = currentRule.lines.join('\n');
+  hudRuleText.style.color = currentRule.accent;
+  hudRuleStrip.style.borderColor = currentRule.accent;
+  const longRule =
+    currentRule.lines.length > 1 || (currentRule.badge && currentRule.badge.length > 22);
+  hudRuleText.classList.toggle('hud-rule-text--long', longRule);
+}
 const finalScEl  = document.getElementById('final-score');
 const envBtn     = document.getElementById('env-btn');
 const topNav     = document.getElementById('top-nav');
@@ -847,9 +858,7 @@ function showHuntScreen() {
     currentRule.lines.length > 1 || currentRule.badge.length > 22
   );
   ruleDisp.style.color = currentRule.accent;
-  hudBadge.textContent = currentRule.badge;
-  hudBadge.style.color = currentRule.accent;
-  hudBadge.style.borderColor = currentRule.accent;
+  syncHudRuleStrip();
 
   updateHUD();
   huntScreen.classList.remove('hidden');
@@ -1226,7 +1235,12 @@ function separateEntityFromWalls(pos) {
   }
 }
 
-const ENTITY_PAIR_SEP = 1.14;
+/**
+ * Min center-to-center XZ distance between entities (disc proxy).
+ * Geos: cube 0.88×1.1 outline ≈0.968 — at 45° yaw XZ AABB half-extent ≈0.684 → need ≥1.37.
+ * Sphere r0.48×1.1, tetra r0.58×1.1, cylinder r0.32×1.1 are smaller; use cube worst-case + ε.
+ */
+const ENTITY_PAIR_SEP = 1.38;
 
 // ═══════════════════════════════════════════
 //  GAME LOOP
@@ -1368,48 +1382,54 @@ const playerObj = controls.getObject();
     }
   });
 
-  for (let i = 0; i < entities.length; i++) {
-    const ea = entities[i];
-    if (!ea.alive || ea.dying) continue;
-    const a = ea.mesh.position;
-    for (let j = i + 1; j < entities.length; j++) {
-      const eb = entities[j];
-      if (!eb.alive || eb.dying) continue;
-      const b = eb.mesh.position;
-      const sep = xzOverlapSeparation(a.x, a.z, b.x, b.z, ENTITY_PAIR_SEP);
-      if (sep.ha <= 0) continue;
-      a.x -= sep.nx * sep.ha;
-      a.z -= sep.nz * sep.ha;
-      b.x += sep.nx * sep.hb;
-      b.z += sep.nz * sep.hb;
-      if (ea.moveMode === 'slide') {
-        const vn = ea.slideVx * sep.nx + ea.slideVz * sep.nz;
-        if (vn > 0) {
-          ea.slideVx -= 2 * vn * sep.nx;
-          ea.slideVz -= 2 * vn * sep.nz;
+  /** Pairwise XZ separation + slide/bounce/orbit nudges (multi-pass relaxes 3+ body stacks). */
+  const pairPasses = 4;
+  for (let pass = 0; pass < pairPasses; pass++) {
+    for (let i = 0; i < entities.length; i++) {
+      const ea = entities[i];
+      if (!ea.alive || ea.dying) continue;
+      const a = ea.mesh.position;
+      for (let j = i + 1; j < entities.length; j++) {
+        const eb = entities[j];
+        if (!eb.alive || eb.dying) continue;
+        const b = eb.mesh.position;
+        const sep = xzOverlapSeparation(a.x, a.z, b.x, b.z, ENTITY_PAIR_SEP);
+        if (sep.ha <= 0) continue;
+        a.x -= sep.nx * sep.ha;
+        a.z -= sep.nz * sep.ha;
+        b.x += sep.nx * sep.hb;
+        b.z += sep.nz * sep.hb;
+        if (pass === 0) {
+          if (ea.moveMode === 'slide') {
+            const vn = ea.slideVx * sep.nx + ea.slideVz * sep.nz;
+            if (vn > 0) {
+              ea.slideVx -= 2 * vn * sep.nx;
+              ea.slideVz -= 2 * vn * sep.nz;
+            }
+          }
+          if (eb.moveMode === 'slide') {
+            const vn = eb.slideVx * sep.nx + eb.slideVz * sep.nz;
+            if (vn < 0) {
+              eb.slideVx -= 2 * vn * sep.nx;
+              eb.slideVz -= 2 * vn * sep.nz;
+            }
+          }
+          if (ea.moveMode === 'drift' || ea.moveMode === 'bounce') {
+            ea.target.x += sep.nx * 1.1;
+            ea.target.z += sep.nz * 1.1;
+            ea.target.x = THREE.MathUtils.clamp(ea.target.x, -entXZLim, entXZLim);
+            ea.target.z = THREE.MathUtils.clamp(ea.target.z, -entXZLim, entXZLim);
+          }
+          if (eb.moveMode === 'drift' || eb.moveMode === 'bounce') {
+            eb.target.x -= sep.nx * 1.1;
+            eb.target.z -= sep.nz * 1.1;
+            eb.target.x = THREE.MathUtils.clamp(eb.target.x, -entXZLim, entXZLim);
+            eb.target.z = THREE.MathUtils.clamp(eb.target.z, -entXZLim, entXZLim);
+          }
+          if (ea.moveMode === 'orbit') ea.orbitAng += Math.random() > 0.5 ? 0.1 : -0.1;
+          if (eb.moveMode === 'orbit') eb.orbitAng += Math.random() > 0.5 ? 0.1 : -0.1;
         }
       }
-      if (eb.moveMode === 'slide') {
-        const vn = eb.slideVx * sep.nx + eb.slideVz * sep.nz;
-        if (vn < 0) {
-          eb.slideVx -= 2 * vn * sep.nx;
-          eb.slideVz -= 2 * vn * sep.nz;
-        }
-      }
-      if (ea.moveMode === 'drift' || ea.moveMode === 'bounce') {
-        ea.target.x += sep.nx * 1.1;
-        ea.target.z += sep.nz * 1.1;
-        ea.target.x = THREE.MathUtils.clamp(ea.target.x, -entXZLim, entXZLim);
-        ea.target.z = THREE.MathUtils.clamp(ea.target.z, -entXZLim, entXZLim);
-      }
-      if (eb.moveMode === 'drift' || eb.moveMode === 'bounce') {
-        eb.target.x -= sep.nx * 1.1;
-        eb.target.z -= sep.nz * 1.1;
-        eb.target.x = THREE.MathUtils.clamp(eb.target.x, -entXZLim, entXZLim);
-        eb.target.z = THREE.MathUtils.clamp(eb.target.z, -entXZLim, entXZLim);
-      }
-      if (ea.moveMode === 'orbit') ea.orbitAng += Math.random() > 0.5 ? 0.1 : -0.1;
-      if (eb.moveMode === 'orbit') eb.orbitAng += Math.random() > 0.5 ? 0.1 : -0.1;
     }
   }
 
@@ -1421,6 +1441,26 @@ const playerObj = controls.getObject();
     m.position.x = THREE.MathUtils.clamp(m.position.x, -entXZLim, entXZLim);
     m.position.z = THREE.MathUtils.clamp(m.position.z, -entXZLim, entXZLim);
   });
+
+  /* Walls can push centers back into overlap; one more position-only relaxation pass. */
+  for (let pass = 0; pass < 2; pass++) {
+    for (let i = 0; i < entities.length; i++) {
+      const ea = entities[i];
+      if (!ea.alive || ea.dying) continue;
+      const a = ea.mesh.position;
+      for (let j = i + 1; j < entities.length; j++) {
+        const eb = entities[j];
+        if (!eb.alive || eb.dying) continue;
+        const b = eb.mesh.position;
+        const sep = xzOverlapSeparation(a.x, a.z, b.x, b.z, ENTITY_PAIR_SEP);
+        if (sep.ha <= 0) continue;
+        a.x -= sep.nx * sep.ha;
+        a.z -= sep.nz * sep.ha;
+        b.x += sep.nx * sep.hb;
+        b.z += sep.nz * sep.hb;
+      }
+    }
+  }
 
   entities.forEach(ent => {
     if (!ent.alive) return;

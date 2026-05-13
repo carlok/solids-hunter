@@ -16,6 +16,14 @@ describe('xzOverlapSeparation', () => {
     expect(r.nz).toBeCloseTo(0, 5);
   });
 
+  it('separation brings centers to exactly minSep apart on X axis', () => {
+    const minSep = 2;
+    const r = xzOverlapSeparation(0, 0, 1, 0, minSep);
+    const ax = 0 - r.nx * r.ha;
+    const bx = 1 + r.nx * r.hb;
+    expect(Math.hypot(bx - ax, 0)).toBeCloseTo(minSep, 5);
+  });
+
   it('handles coincident centers with arbitrary stable normal', () => {
     const r = xzOverlapSeparation(3, 3, 3, 3, 1.2);
     expect(r.ha).toBeGreaterThan(0);

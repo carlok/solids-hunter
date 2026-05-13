@@ -18,7 +18,8 @@ export function xzOverlapSeparation(ax, az, bx, bz, minSep) {
   }
   const d = Math.sqrt(d2);
   if (d >= minSep) return { nx: 0, nz: 0, ha: 0, hb: 0 };
-  const push = (minSep - d) * 0.52;
+  /* Equal half-shifts so centers end exactly `minSep` apart (was 0.52 each → slight over-push). */
+  const push = (minSep - d) * 0.5;
   const nx = dx / d;
   const nz = dz / d;
   return { nx, nz, ha: push, hb: push };

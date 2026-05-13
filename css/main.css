@@ -179,20 +179,60 @@
     outline-offset: 2px;
   }
 
-  #xhair {
-    position: absolute; top: 50%; left: 50%;
-    transform: translate(-50%,-50%);
-    width: 20px; height: 20px;
+  /* Lower-center “sprite” rifle (classic FPS layout) */
+  .hud-weapon {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: min(72vw, 520px);
+    height: min(28vh, 200px);
+    z-index: 10;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    pointer-events: none;
+    filter: drop-shadow(0 -4px 18px rgba(0, 0, 0, 0.55));
+    opacity: 0.94;
   }
-  #xhair::before, #xhair::after {
-    content: ''; position: absolute; background: rgba(255,255,255,0.9);
+  .hud-weapon-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
   }
-  #xhair::before { width: 2px; height: 100%; left: 50%; transform: translateX(-50%); }
-  #xhair::after  { height: 2px; width: 100%; top: 50%; transform: translateY(-50%); }
+
+  /* Viewfinder: ring + brackets + dot (center of screen) */
+  .hud-reticle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(22vw, 140px);
+    height: min(22vw, 140px);
+    z-index: 11;
+    pointer-events: none;
+    filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.85));
+  }
+  .hud-reticle-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .hud-reticle .reticle-ring-outer {
+    animation: reticle-breathe 3.2s ease-in-out infinite;
+  }
+  @keyframes reticle-breathe {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 0.88; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hud-reticle .reticle-ring-outer { animation: none; opacity: 0.72; }
+  }
 
   /* Score + targets: bottom-left panel, high contrast for pointer-lock play */
   #hud-left.hud-points {
     position: absolute;
+    z-index: 13;
     bottom: 1.1rem;
     left: 1.1rem;
     display: flex;
@@ -235,20 +275,54 @@
       0 0 24px rgba(100, 210, 255, 0.55);
   }
 
-  #hud-rule { position: absolute; top: 1.2rem; right: 1.4rem; text-align: right; }
-  #hud-rule .lbl { color: rgba(255,255,255,0.55); font-size: 0.62rem; letter-spacing: 0.25em; }
-  #hud-rule .badge {
-    display: inline-block; border: 1px solid;
-    padding: 0.22rem 0.65rem; margin-top: 0.28rem;
-    max-width: min(58vw, 22rem);
-    font-size: 0.68rem; letter-spacing: 0.06em;
-    line-height: 1.35; text-align: right; white-space: normal;
-    background: rgba(0,0,0,0.25);
+  /* Full boolean rule, upper center (clears top-left sound control) */
+  #hud-rule-strip {
+    position: absolute;
+    z-index: 13;
+    top: 3.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: min(92vw, 40rem);
+    padding: 0.5rem 1.1rem 0.62rem;
+    text-align: center;
+    background: rgba(8, 12, 22, 0.9);
+    border: 2px solid rgba(255, 255, 255, 0.42);
+    border-radius: 12px;
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.45),
+      0 8px 26px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+  }
+  #hud-rule-strip .lbl {
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 0.6rem;
+    letter-spacing: 0.28em;
+    font-weight: 700;
+    text-transform: uppercase;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+    margin-bottom: 0.2rem;
+  }
+  .hud-rule-text {
+    font-size: clamp(0.82rem, 2.5vw, 1.08rem);
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    line-height: 1.22;
+    white-space: pre-line;
+    text-shadow:
+      0 0 1px #000,
+      0 2px 4px rgba(0, 0, 0, 0.85);
+    margin: 0;
+  }
+  .hud-rule-text.hud-rule-text--long {
+    font-size: clamp(0.68rem, 2.1vw, 0.88rem);
+    letter-spacing: 0.045em;
+    line-height: 1.32;
   }
 
   /* Kept off bottom-left so it does not cover the score panel */
   #hud-hint {
     position: absolute;
+    z-index: 13;
     bottom: 1rem;
     right: 1.1rem;
     left: auto;
@@ -269,6 +343,14 @@
       padding: 0.65rem 0.85rem 0.75rem;
     }
     #hud-left .hud-stat { min-width: 0; }
+    .hud-weapon {
+      width: min(88vw, 440px);
+      height: min(22vh, 150px);
+    }
+    .hud-reticle {
+      width: min(28vw, 120px);
+      height: min(28vw, 120px);
+    }
   }
 
   #vignette {

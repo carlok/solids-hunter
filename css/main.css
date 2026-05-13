@@ -76,7 +76,11 @@
     color: #1e2430;
   }
   #env-screen .game-title {
-    font-size: 5rem; letter-spacing: 0.5em;
+    font-size: clamp(2.2rem, 6.5vw, 3.6rem);
+    letter-spacing: 0.12em;
+    line-height: 1.15;
+    max-width: min(96vw, 36rem);
+    text-align: center;
     color: #0097a7; margin-bottom: 0.15em;
     text-shadow: 0 2px 24px rgba(0,151,167,0.25);
     font-weight: bold;
@@ -114,7 +118,15 @@
   .btn-row { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
 
   #hunt-screen .lbl  { font-size: 0.7rem; color: #5a6578; letter-spacing: 0.35em; margin-bottom: 1rem; }
-  #hunt-screen .rule { font-size: 2.6rem; letter-spacing: 0.12em; margin-bottom: 0.4rem; font-weight: bold; }
+  #hunt-screen .rule {
+    font-size: 2.6rem; letter-spacing: 0.12em; margin-bottom: 0.4rem; font-weight: bold;
+    white-space: pre-line; text-align: center; max-width: min(94vw, 40rem); line-height: 1.12;
+  }
+  #hunt-screen .rule.rule--long {
+    font-size: clamp(1.15rem, 3.8vw, 1.65rem);
+    letter-spacing: 0.06em;
+    line-height: 1.28;
+  }
   #hunt-screen .hint { font-size: 0.7rem; color: #5a6578; margin-bottom: 1.2rem; }
   .hunt-actions { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
 
@@ -141,7 +153,9 @@
   #hud-rule .badge {
     display: inline-block; border: 1px solid;
     padding: 0.22rem 0.65rem; margin-top: 0.28rem;
-    font-size: 0.82rem; letter-spacing: 0.12em;
+    max-width: min(58vw, 22rem);
+    font-size: 0.68rem; letter-spacing: 0.06em;
+    line-height: 1.35; text-align: right; white-space: normal;
     background: rgba(0,0,0,0.25);
   }
 

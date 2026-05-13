@@ -1,0 +1,15 @@
+{
+  "name": "solids-hunter",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage",
+    "build": "node scripts/build-dist.mjs"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.9",
+    "esbuild": "^0.24.2",
+    "vitest": "^2.1.9"
+  }
+}

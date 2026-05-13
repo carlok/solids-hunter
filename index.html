@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>HUNT — 3D Shape Hunter</title>
+<title>Solids Hunter</title>
 <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
@@ -24,7 +24,7 @@
   <div class="modal-card">
     <button type="button" class="modal-close" id="help-close" aria-label="Close">×</button>
     <h2 id="help-title">HELP</h2>
-    <p><strong>HUNT</strong> is a first-person shape hunt. Only shoot targets that match your rule.</p>
+    <p><strong>Solids Hunter</strong> is a first-person hunt: each round you get a <strong>boolean rule</strong> (sometimes simple, sometimes with <strong>AND</strong>, <strong>OR</strong>, or <strong>NOT</strong>). Only raycast-shoot solids that satisfy the rule.</p>
     <ul>
       <li><strong>Move:</strong> WASD or arrow keys</li>
       <li><strong>Look:</strong> mouse (pointer lock after you start)</li>
@@ -32,7 +32,7 @@
       <li><strong>Pause:</strong> Esc — opens pause; click Resume to continue</li>
       <li><strong>Menu:</strong> ☰ top-left — Help, Credits, Main menu</li>
     </ul>
-    <p>Correct match +10 points. Wrong target −5. Clear all matching targets to finish the round.</p>
+    <p>Solids move in different ways (drift, bounce, orbit, slide). Correct match +10 points. Wrong target −5. Clear every matching solid to finish the round.</p>
   </div>
 </div>
 
@@ -40,7 +40,8 @@
   <div class="modal-card">
     <button type="button" class="modal-close" id="credits-close" aria-label="Close">×</button>
     <h2 id="credits-title">CREDITS</h2>
-    <p><strong>HUNT — 3D Shape Hunter</strong></p>
+    <p><strong>Solids Hunter</strong></p>
+    <p>By <strong>Carlo Perassi</strong>.</p>
     <p>Built with <a href="https://threejs.org/" target="_blank" rel="noopener">Three.js</a> (r128) and PointerLockControls. Procedural environments and entities — no external 3D assets.</p>
     <p style="margin-top:1rem;font-size:0.72rem;color:#7a8799;">Thanks for playing.</p>
   </div>
@@ -52,7 +53,7 @@
 
 <!-- ENV PICKER -->
 <div id="env-screen" class="screen">
-  <div class="game-title">HUNT</div>
+  <div class="game-title">SOLIDS HUNTER</div>
   <div class="subtitle">CHOOSE YOUR ARENA</div>
   <div class="env-grid">
     <div class="env-card" data-env="dungeon">
@@ -73,13 +74,13 @@
     <div class="env-card" data-env="ruins">
       <div class="icon">🏛️</div>
       <div class="name">RUINS</div>
-      <div class="desc">Broken columns, scattered walls, ember sky</div>
+      <div class="desc">Broken columns, scattered walls, warm daylight</div>
     </div>
   </div>
   <button class="btn" id="env-btn" disabled>— SELECT AN ENVIRONMENT —</button>
 </div>
 
-<!-- HUNT RULE -->
+<!-- Round rule (Solids Hunter) -->
 <div id="hunt-screen" class="screen hidden">
   <div class="lbl">YOUR TARGET</div>
   <div class="rule" id="rule-disp"></div>
@@ -100,7 +101,7 @@
     <div class="val" id="targets-el">0</div>
   </div>
   <div id="hud-rule">
-    <div class="lbl">HUNTING</div>
+    <div class="lbl">RULE</div>
     <div class="badge" id="hud-badge"></div>
   </div>
   <div id="hud-hint">WASD / ARROWS · MOUSE LOOK · CLICK TO SHOOT · ESC PAUSE</div>
@@ -131,6 +132,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
 <script src="js/audio.js"></script>
-<script src="js/main.js"></script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>

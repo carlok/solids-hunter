@@ -29,6 +29,7 @@
       <li><strong>Move:</strong> WASD or arrow keys</li>
       <li><strong>Look:</strong> mouse (pointer lock after you start)</li>
       <li><strong>Shoot:</strong> left-click on a shape</li>
+      <li><strong>Sound:</strong> <strong>M</strong> toggles mute anytime; arena / rule / pause screens also have a <strong>Sound: ON/OFF</strong> button; in-game, top-left icon or <strong>M</strong></li>
       <li><strong>Pause:</strong> Esc — opens pause; click Resume to continue</li>
       <li><strong>Menu:</strong> ☰ top-left — Help, Credits, Main menu</li>
     </ul>
@@ -55,6 +56,9 @@
 <div id="env-screen" class="screen">
   <div class="game-title">SOLIDS HUNTER</div>
   <div class="subtitle">CHOOSE YOUR ARENA</div>
+  <div class="menu-settings-row" role="group" aria-label="Settings">
+    <button type="button" id="menu-sound-toggle" class="btn sec sound-menu-btn" aria-pressed="false">Sound: ON</button>
+  </div>
   <div class="env-grid">
     <div class="env-card" data-env="dungeon">
       <div class="icon">🏰</div>
@@ -85,6 +89,9 @@
   <div class="lbl">YOUR TARGET</div>
   <div class="rule" id="rule-disp"></div>
   <div class="hint">Correct hit +10 pts &nbsp;·&nbsp; Wrong click −5 pts</div>
+  <div class="hunt-settings-row" role="group" aria-label="Settings">
+    <button type="button" id="hunt-sound-toggle" class="btn sec sound-menu-btn" aria-pressed="false">Sound: ON</button>
+  </div>
   <div class="hunt-actions">
     <button class="btn" id="start-btn">LOCK AND LOAD →</button>
     <button class="btn sec" type="button" id="back-arena-btn">← BACK TO ARENA</button>
@@ -93,6 +100,7 @@
 
 <!-- HUD -->
 <div id="hud" class="hidden">
+  <button type="button" id="hud-sound-toggle" class="hud-sound-toggle" aria-pressed="false" title="Sound on — click to mute" aria-label="Toggle game sound">🔊</button>
   <div id="xhair"></div>
   <div id="hud-left" class="hud-points" aria-label="Score and targets">
     <div class="hud-stat">
@@ -108,13 +116,16 @@
     <div class="lbl">RULE</div>
     <div class="badge" id="hud-badge"></div>
   </div>
-  <div id="hud-hint">WASD / ARROWS · MOUSE LOOK · CLICK TO SHOOT · ESC PAUSE</div>
+  <div id="hud-hint">WASD / ARROWS · MOUSE LOOK · CLICK TO SHOOT · <strong>M</strong> OR 🔊 TOP-LEFT = SOUND · ESC PAUSE</div>
 </div>
 
 <!-- PAUSED -->
 <div id="paused" class="screen hidden">
   <div class="p-title">PAUSED</div>
   <div class="p-sub">Click to resume</div>
+  <div class="paused-settings-row" role="group" aria-label="Settings">
+    <button type="button" id="pause-sound-toggle" class="btn sec sound-menu-btn" aria-pressed="false">Sound: ON</button>
+  </div>
   <div class="paused-actions">
     <button class="btn" id="resume-btn">RESUME →</button>
     <button class="btn sec" type="button" id="paused-menu-btn">MAIN MENU</button>

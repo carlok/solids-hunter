@@ -21,6 +21,18 @@
   const buffers = {};
   let footCooldown = 0;
 
+  let muted = false;
+  try {
+    if (localStorage.getItem('solidsHunterMute') === '1') muted = true;
+  } catch (e) {}
+
+  function persistMuted(value) {
+    muted = !!value;
+    try {
+      localStorage.setItem('solidsHunterMute', muted ? '1' : '0');
+    } catch (e) {}
+  }
+
   function getCtx() {
     if (!AC) return null;
     if (!ctx) ctx = new AC();
@@ -33,6 +45,7 @@
   }
 
   function playBuffer(name, vol, rate) {
+    if (muted) return;
     const c = getCtx();
     if (!c) return;
     resume();
@@ -52,6 +65,7 @@
   }
 
   function beep(freq, dur, vol, type) {
+    if (muted) return;
     const c = getCtx();
     if (!c) return;
     resume();
@@ -68,6 +82,7 @@
   }
 
   function noiseBurst(dur, vol) {
+    if (muted) return;
     const c = getCtx();
     if (!c) return;
     resume();
@@ -138,6 +153,15 @@
   global.GameAudio = {
     load,
     resume,
+    isMuted() {
+      return muted;
+    },
+    setMuted(on) {
+      persistMuted(on);
+    },
+    toggleMuted() {
+      persistMuted(!muted);
+    },
     uiClick() {
       playBuffer('ui_click', 0.35, 1);
     },

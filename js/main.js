@@ -165,6 +165,8 @@ let wallBoxes   = [];
 let matchLeft   = 0;
 let gameActive  = false;
 let selectedEnv = null;
+/** Half-extent (XZ) for entity spawn / wander targets after arena margin. */
+let envSpawnHalfXZ = 32;
 
 // ═══════════════════════════════════════════
 //  UI REFS
@@ -172,6 +174,10 @@ let selectedEnv = null;
 const envScreen  = document.getElementById('env-screen');
 const huntScreen = document.getElementById('hunt-screen');
 const hudEl      = document.getElementById('hud');
+const hudSoundToggle = document.getElementById('hud-sound-toggle');
+const menuSoundToggle = document.getElementById('menu-sound-toggle');
+const huntSoundToggle = document.getElementById('hunt-sound-toggle');
+const pauseSoundToggle = document.getElementById('pause-sound-toggle');
 const pausedEl   = document.getElementById('paused');
 const roundEndEl = document.getElementById('round-end');
 const flashEl    = document.getElementById('flash');
@@ -207,6 +213,20 @@ window.addEventListener('keydown', e => {
     }
     if (!modalCredits.classList.contains('hidden')) {
       modalCredits.classList.add('hidden');
+      e.preventDefault();
+      return;
+    }
+  }
+  if (e.code === 'KeyM' && !e.repeat) {
+    const t = e.target;
+    const typing =
+      t &&
+      (t.tagName === 'INPUT' ||
+        t.tagName === 'TEXTAREA' ||
+        (typeof t.isContentEditable === 'boolean' && t.isContentEditable));
+    if (!typing && window.GameAudio && GameAudio.toggleMuted) {
+      GameAudio.toggleMuted();
+      syncSoundToggles();
       e.preventDefault();
       return;
     }
@@ -254,6 +274,7 @@ function goHome() {
   hideLockErrBanner();
   try { if (controls.isLocked) controls.unlock(); } catch (e) {}
   syncTopNav();
+  syncSoundToggles();
 }
 
 // ═══════════════════════════════════════════
@@ -349,6 +370,31 @@ document.getElementById('change-env-btn').addEventListener('click', () => {
   goHome();
 });
 
+function syncSoundToggles() {
+  const m = !!(window.GameAudio && GameAudio.isMuted && GameAudio.isMuted());
+  if (hudSoundToggle) {
+    hudSoundToggle.setAttribute('aria-pressed', m ? 'true' : 'false');
+    hudSoundToggle.textContent = m ? '🔇' : '🔊';
+    hudSoundToggle.title = m ? 'Sound off — click or M to enable' : 'Sound on — click or M to mute';
+  }
+  [menuSoundToggle, huntSoundToggle, pauseSoundToggle].forEach((el) => {
+    if (!el) return;
+    el.setAttribute('aria-pressed', m ? 'true' : 'false');
+    el.textContent = m ? 'Sound: OFF' : 'Sound: ON';
+  });
+}
+
+function onSoundToggleClick(e) {
+  e.stopPropagation();
+  if (e.currentTarget === hudSoundToggle) e.preventDefault();
+  if (window.GameAudio && GameAudio.toggleMuted) GameAudio.toggleMuted();
+  syncSoundToggles();
+}
+
+[hudSoundToggle, menuSoundToggle, huntSoundToggle, pauseSoundToggle].forEach((el) => {
+  if (el) el.addEventListener('click', onSoundToggleClick);
+});
+
 controls.addEventListener('lock', () => {
   try {
     hideLockErrBanner();
@@ -358,6 +404,7 @@ controls.addEventListener('lock', () => {
     vigEl.classList.remove('hidden');
     pausedEl.classList.add('hidden');
     syncTopNav();
+    syncSoundToggles();
     if (window.GameAudio) GameAudio.onEnterPlay();
   } catch (err) { /* avoid breaking pointer-lock success path */ }
 });
@@ -366,21 +413,29 @@ controls.addEventListener('unlock', () => {
   gameActive = false;
   if (window.GameAudio) GameAudio.onLeavePlay();
   if (!roundEndEl.classList.contains('hidden')) {
-    syncTopNav(); return;
+    syncTopNav();
+    syncSoundToggles();
+    return;
   }
   if (!envScreen.classList.contains('hidden')) {
-    syncTopNav(); return;
+    syncTopNav();
+    syncSoundToggles();
+    return;
   }
   if (!huntScreen.classList.contains('hidden')) {
-    syncTopNav(); return;
+    syncTopNav();
+    syncSoundToggles();
+    return;
   }
   pausedEl.classList.remove('hidden');
   hudEl.classList.add('hidden');
   vigEl.classList.add('hidden');
   syncTopNav();
+  syncSoundToggles();
 });
 
 syncTopNav();
+syncSoundToggles();
 
 // ═══════════════════════════════════════════
 //  ENV BUILDER HELPERS
@@ -483,9 +538,31 @@ function envTintHex(base, salt) {
   return c.getHex();
 }
 
-function addWallBox(w, h, d, baseColor, x, y, z, ry) {
+const _wallLo = new THREE.Color();
+const _wallHi = new THREE.Color();
+const _wallMix = new THREE.Color();
+
+/**
+ * Wall color sampled between env style anchors, with light per-face jitter (salt).
+ * If lo === hi, falls back to envTintHex on that tone.
+ */
+function wallColorInPalette(colorLo, colorHi, salt) {
+  if (colorLo === colorHi) return envTintHex(colorLo, salt);
+  _wallLo.setHex(colorLo);
+  _wallHi.setHex(colorHi);
+  const t = Math.sin(salt * 12.9898) * 43758.5453;
+  const u = t - Math.floor(t);
+  _wallMix.copy(_wallLo).lerp(_wallHi, u);
+  const m = Math.sin(salt * 55.391 + 1.7) * 0.03;
+  _wallMix.r = THREE.MathUtils.clamp(_wallMix.r + m, 0, 1);
+  _wallMix.g = THREE.MathUtils.clamp(_wallMix.g - m * 0.35, 0, 1);
+  _wallMix.b = THREE.MathUtils.clamp(_wallMix.b + m * 0.22, 0, 1);
+  return _wallMix.getHex();
+}
+
+function addWallBox(w, h, d, colorLo, colorHi, x, y, z, ry) {
   const salt = x * 31 + y * 17 + z * 13 + w * 2.7 + d * 2.1 + (ry || 0) * 47;
-  return addBox(w, h, d, envTintHex(baseColor, salt), x, y, z, ry, true);
+  return addBox(w, h, d, wallColorInPalette(colorLo, colorHi, salt), x, y, z, ry, true);
 }
 
 // ═══════════════════════════════════════════
@@ -510,24 +587,30 @@ const ENVS = {
     );
     ceil.rotation.x = Math.PI / 2; ceil.position.y = 5.5; scene.add(ceil); envMeshes.push(ceil);
 
-    // Outer walls
-    addWallBox(70, 6, 1, 0x343d52, 0, 3, -35, 0);
-    addWallBox(70, 6, 1, 0x343d52, 0, 3, 35, 0);
-    addWallBox(1, 6, 70, 0x343d52, -35, 3, 0, 0);
-    addWallBox(1, 6, 70, 0x343d52, 35, 3, 0, 0);
+    // Outer walls (cool stone range)
+    const dOutLo = 0x283648;
+    const dOutHi = 0x446080;
+    addWallBox(70, 6, 1, dOutLo, dOutHi, 0, 3, -35, 0);
+    addWallBox(70, 6, 1, dOutLo, dOutHi, 0, 3, 35, 0);
+    addWallBox(1, 6, 70, dOutLo, dOutHi, -35, 3, 0, 0);
+    addWallBox(1, 6, 70, dOutLo, dOutHi, 35, 3, 0, 0);
 
     // Interior walls
-    addWallBox(18, 5, 1.2, 0x3d4656, -9, 2.5, -11, 0);
-    addWallBox(18, 5, 1.2, 0x3d4656, 9, 2.5, 11, 0);
-    addWallBox(1.2, 5, 14, 0x3d4656, 7, 2.5, -19, 0);
-    addWallBox(1.2, 5, 14, 0x3d4656, -7, 2.5, 19, 0);
-    addWallBox(10, 5, 1.2, 0x3d4656, 19, 2.5, -5, 0);
-    addWallBox(10, 5, 1.2, 0x3d4656, -19, 2.5, 5, 0);
+    const dInLo = 0x303e52;
+    const dInHi = 0x4a6080;
+    addWallBox(18, 5, 1.2, dInLo, dInHi, -9, 2.5, -11, 0);
+    addWallBox(18, 5, 1.2, dInLo, dInHi, 9, 2.5, 11, 0);
+    addWallBox(1.2, 5, 14, dInLo, dInHi, 7, 2.5, -19, 0);
+    addWallBox(1.2, 5, 14, dInLo, dInHi, -7, 2.5, 19, 0);
+    addWallBox(10, 5, 1.2, dInLo, dInHi, 19, 2.5, -5, 0);
+    addWallBox(10, 5, 1.2, dInLo, dInHi, -19, 2.5, 5, 0);
 
     // Pillars (no pillar at origin — player spawn corridor)
+    const dPilLo = 0x384858;
+    const dPilHi = 0x5a6c88;
     [[-9, 0, -9], [9, 0, -9], [-9, 0, 9], [9, 0, 9],
       [-17, 0, -17], [17, 0, -17], [-17, 0, 17], [17, 0, 17]].forEach(([x,, z]) => {
-      addWallBox(1.5, 5.5, 1.5, 0x4a5568, x, 2.75, z, 0);
+      addWallBox(1.5, 5.5, 1.5, dPilLo, dPilHi, x, 2.75, z, 0);
     });
 
     // Rubble
@@ -547,12 +630,13 @@ const ENVS = {
 
     addFloor(90, 0x132618);
 
-    // Perimeter: cooler slate vs dark forest floor (reads as vertical boundary, not sky)
-    const forestBarrier = 0x2a4538;
-    addWallBox(90, 12, 0.5, forestBarrier, 0, 6, -45, 0);
-    addWallBox(90, 12, 0.5, forestBarrier, 0, 6, 45, 0);
-    addWallBox(0.5, 12, 90, forestBarrier, -45, 6, 0, 0);
-    addWallBox(0.5, 12, 90, forestBarrier, 45, 6, 0, 0);
+    // Perimeter: mossy stone in a green-brown range
+    const fWallLo = 0x1a3020;
+    const fWallHi = 0x3e6048;
+    addWallBox(90, 12, 0.5, fWallLo, fWallHi, 0, 6, -45, 0);
+    addWallBox(90, 12, 0.5, fWallLo, fWallHi, 0, 6, 45, 0);
+    addWallBox(0.5, 12, 90, fWallLo, fWallHi, -45, 6, 0, 0);
+    addWallBox(0.5, 12, 90, fWallLo, fWallHi, 45, 6, 0, 0);
 
     // Trees
     const treePos = [
@@ -621,11 +705,13 @@ const ENVS = {
       gl2.rotation.x = -Math.PI/2; gl2.position.set(i,0.01,0); scene.add(gl2); envMeshes.push(gl2);
     }
 
-    // Outer walls
-    addWallBox(65, 7, 0.5, 0x2a3448, 0, 3.5, -32, 0);
-    addWallBox(65, 7, 0.5, 0x2a3448, 0, 3.5, 32, 0);
-    addWallBox(0.5, 7, 65, 0x2a3448, -32, 3.5, 0, 0);
-    addWallBox(0.5, 7, 65, 0x2a3448, 32, 3.5, 0, 0);
+    // Outer walls (industrial blue-grey)
+    const lOutLo = 0x222c40;
+    const lOutHi = 0x405878;
+    addWallBox(65, 7, 0.5, lOutLo, lOutHi, 0, 3.5, -32, 0);
+    addWallBox(65, 7, 0.5, lOutLo, lOutHi, 0, 3.5, 32, 0);
+    addWallBox(0.5, 7, 65, lOutLo, lOutHi, -32, 3.5, 0, 0);
+    addWallBox(0.5, 7, 65, lOutLo, lOutHi, 32, 3.5, 0, 0);
 
     // Solid partition panels (opaque — no see-through glass)
     [[0.3,6,10,  10,3,  0],
@@ -667,27 +753,29 @@ const ENVS = {
 
     addFloor(90, 0x1a140e);
 
-    const ruinsStone = 0x4a2e18;
-    addWallBox(90, 9, 0.5, ruinsStone, 0, 4.5, -45, 0);
-    addWallBox(90, 9, 0.5, ruinsStone, 0, 4.5, 45, 0);
-    addWallBox(0.5, 9, 90, ruinsStone, -45, 4.5, 0, 0);
-    addWallBox(0.5, 9, 90, ruinsStone, 45, 4.5, 0, 0);
+    const rPerimLo = 0x321c10;
+    const rPerimHi = 0x5c3820;
+    addWallBox(90, 9, 0.5, rPerimLo, rPerimHi, 0, 4.5, -45, 0);
+    addWallBox(90, 9, 0.5, rPerimLo, rPerimHi, 0, 4.5, 45, 0);
+    addWallBox(0.5, 9, 90, rPerimLo, rPerimHi, -45, 4.5, 0, 0);
+    addWallBox(0.5, 9, 90, rPerimLo, rPerimHi, 45, 4.5, 0, 0);
 
-    const wc = ruinsStone;
-    addWallBox(10, 4, 0.9, wc, -11, 2, -9, 0.2);
-    addWallBox(7, 6, 0.9, wc, 7, 3, -14, -0.1);
-    addWallBox(14, 3, 0.9, wc, 10, 1.5, 7, 0.3);
-    addWallBox(8, 5, 0.9, wc, -17, 2.5, 12, -0.2);
-    addWallBox(5, 2, 0.9, wc, 1, 1, 10, 0.5);
-    addWallBox(12, 4, 0.9, wc, -5, 2, -22, 0.1);
-    addWallBox(9, 5, 0.9, wc, 20, 2.5, 0, 0);
-    addWallBox(11, 3, 0.9, wc, -22, 1.5, -7, 0.15);
-    addWallBox(7, 4, 0.9, wc, -4, 2, 19, 0.35);
-    addWallBox(8, 3, 0.9, wc, 15, 1.5, -21, 0.1);
+    const rInLo = 0x3a2412;
+    const rInHi = 0x644030;
+    addWallBox(10, 4, 0.9, rInLo, rInHi, -11, 2, -9, 0.2);
+    addWallBox(7, 6, 0.9, rInLo, rInHi, 7, 3, -14, -0.1);
+    addWallBox(14, 3, 0.9, rInLo, rInHi, 10, 1.5, 7, 0.3);
+    addWallBox(8, 5, 0.9, rInLo, rInHi, -17, 2.5, 12, -0.2);
+    addWallBox(5, 2, 0.9, rInLo, rInHi, 1, 1, 10, 0.5);
+    addWallBox(12, 4, 0.9, rInLo, rInHi, -5, 2, -22, 0.1);
+    addWallBox(9, 5, 0.9, rInLo, rInHi, 20, 2.5, 0, 0);
+    addWallBox(11, 3, 0.9, rInLo, rInHi, -22, 1.5, -7, 0.15);
+    addWallBox(7, 4, 0.9, rInLo, rInHi, -4, 2, 19, 0.35);
+    addWallBox(8, 3, 0.9, rInLo, rInHi, 15, 1.5, -21, 0.1);
 
     [[-5, 0, 5], [-10, 0, 10], [17, 0, -7], [-17, 0, -14], [2, 0, -20], [12, 0, 17], [23, 0, 4], [-23, 0, -5]].forEach(([x,, z]) => {
       const ch = 1.5 + Math.random() * 4;
-      addWallBox(1.2, ch, 1.2, 0x5a3a20, x, ch / 2, z, 0);
+      addWallBox(1.2, ch, 1.2, 0x442818, 0x6a4838, x, ch / 2, z, 0);
       if (Math.random() > 0.45) {
         const capX = x + (Math.random() - 0.5) * 0.4;
         const capZ = z + (Math.random() - 0.5) * 0.4;
@@ -725,6 +813,12 @@ const ENV_SPAWN = {
 };
 
 function buildEnv(name) {
+  if (name === 'dungeon') envSpawnHalfXZ = 32;
+  else if (name === 'forest') envSpawnHalfXZ = 40;
+  else if (name === 'lab') envSpawnHalfXZ = 28;
+  else if (name === 'ruins') envSpawnHalfXZ = 40;
+  else envSpawnHalfXZ = 32;
+
   ENVS[name]();
   addSkySphere();
   if (name === 'forest' || name === 'ruins') {
@@ -761,6 +855,7 @@ function showHuntScreen() {
   huntScreen.classList.remove('hidden');
   hudEl.classList.add('hidden');
   vigEl.classList.add('hidden');
+  syncSoundToggles();
 }
 
 // ═══════════════════════════════════════════
@@ -790,16 +885,6 @@ function makeLabel(text, hexColor) {
   }));
   sp.scale.set(2.3, 0.52, 1);
   return sp;
-}
-
-function freeSpawn() {
-  for (let t = 0; t < 30; t++) {
-    const x = (Math.random()-0.5)*44;
-    const z = (Math.random()-0.5)*44;
-    if (Math.abs(x) < 4 && Math.abs(z) < 4) continue;
-    return new THREE.Vector3(x, 1.5, z);
-  }
-  return new THREE.Vector3(9, 1.5, 9);
 }
 
 function spawnEntities() {
@@ -835,11 +920,8 @@ function spawnEntities() {
     label.position.copy(pos).setY(pos.y + 1.2);
     scene.add(label);
 
-    const target = new THREE.Vector3(
-      THREE.MathUtils.clamp((Math.random() - 0.5) * 60, -30, 30),
-      1.5,
-      THREE.MathUtils.clamp((Math.random() - 0.5) * 60, -30, 30)
-    );
+    const tp = randomOpenXZ(envSpawnHalfXZ, 3, 1.45);
+    const target = new THREE.Vector3(tp.x, 1.5, tp.z);
 
     const moveMode = pick(MOVE_MODES);
     const isMatch = rule.matches({ color, shape });
@@ -927,8 +1009,10 @@ const _traceBeamDir = new THREE.Vector3();
 const _yUp = new THREE.Vector3(0, 1, 0);
 
 /**
- * Bright beam from muzzle to hit (or max range). WebGL line width is often ~1px and gets lost in fog / tone mapping,
- * so we use a thin emissive cylinder + additive pass drawn without depth test.
+ * Beam from muzzle to hit (or max range). A single additive cyan cylinder was
+ * nearly invisible on the bright sky + tone-mapped renderer; use a warm outer
+ * shell (normal blend) plus a bright additive core, both depth-off so the trace
+ * always reads as a “line” toward the target.
  */
 function spawnShotTracer(start, end) {
   _traceBeamDir.subVectors(end, start);
@@ -937,9 +1021,36 @@ function spawnShotTracer(start, end) {
   _traceBeamDir.multiplyScalar(1 / len);
   _traceMid.addVectors(start, end).multiplyScalar(0.5);
 
-  const geo = new THREE.CylinderGeometry(0.055, 0.028, len, 10, 1, false);
-  const mat = new THREE.MeshBasicMaterial({
-    color: 0xa8ffff,
+  function orientBeam(mesh, renderOrder) {
+    if (Math.abs(_traceBeamDir.dot(_yUp)) > 0.995) {
+      mesh.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), _traceBeamDir.y > 0 ? 0 : Math.PI);
+    } else {
+      mesh.quaternion.setFromUnitVectors(_yUp, _traceBeamDir);
+    }
+    mesh.position.copy(_traceMid);
+    mesh.frustumCulled = false;
+    mesh.renderOrder = renderOrder;
+  }
+
+  const layers = [];
+  const haloGeo = new THREE.CylinderGeometry(0.16, 0.07, len, 12, 1, false);
+  const haloMat = new THREE.MeshBasicMaterial({
+    color: 0xff7722,
+    transparent: true,
+    opacity: 0.95,
+    depthTest: false,
+    depthWrite: false,
+    blending: THREE.NormalBlending,
+    fog: false
+  });
+  const halo = new THREE.Mesh(haloGeo, haloMat);
+  orientBeam(halo, 1000);
+  scene.add(halo);
+  layers.push({ mesh: halo, geo: haloGeo, mat: haloMat });
+
+  const coreGeo = new THREE.CylinderGeometry(0.048, 0.02, len, 10, 1, false);
+  const coreMat = new THREE.MeshBasicMaterial({
+    color: 0xffffee,
     transparent: true,
     opacity: 1,
     depthTest: false,
@@ -947,38 +1058,38 @@ function spawnShotTracer(start, end) {
     blending: THREE.AdditiveBlending,
     fog: false
   });
-  const beam = new THREE.Mesh(geo, mat);
-  beam.position.copy(_traceMid);
-  if (Math.abs(_traceBeamDir.dot(_yUp)) > 0.995) {
-    beam.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), _traceBeamDir.y > 0 ? 0 : Math.PI);
-  } else {
-    beam.quaternion.setFromUnitVectors(_yUp, _traceBeamDir);
-  }
-  beam.frustumCulled = false;
-  beam.renderOrder = 1000;
-  scene.add(beam);
+  const core = new THREE.Mesh(coreGeo, coreMat);
+  orientBeam(core, 1001);
+  scene.add(core);
+  layers.push({ mesh: core, geo: coreGeo, mat: coreMat });
 
   const t0 = performance.now();
-  const dur = 130;
+  const dur = 240;
   function fade(tNow) {
     const u = (tNow - t0) / dur;
     if (u >= 1) {
-      scene.remove(beam);
-      geo.dispose();
-      mat.dispose();
+      for (const L of layers) {
+        scene.remove(L.mesh);
+        L.geo.dispose();
+        L.mat.dispose();
+      }
       return;
     }
-    mat.opacity = 1 - u * u;
+    const k = 1 - u * u;
+    haloMat.opacity = 0.95 * k;
+    coreMat.opacity = k;
     requestAnimationFrame(fade);
   }
   requestAnimationFrame(fade);
 }
 
-window.addEventListener('click', () => {
+window.addEventListener('mousedown', (e) => {
+  if (e.button !== 0) return;
   if (!gameActive || !controls.isLocked) return;
 
   if (window.GameAudio) GameAudio.shoot();
 
+  camera.updateMatrixWorld(true);
   raycaster.setFromCamera(CENT, camera);
   _traceDir.copy(raycaster.ray.direction).normalize();
   _traceMuzzle.copy(raycaster.ray.origin).addScaledVector(_traceDir, 0.22);
@@ -1057,6 +1168,64 @@ function entityHitsWallAt(pos) {
   return false;
 }
 
+/** Random XZ whose entity AABB (at yTest) does not intersect any wall. */
+function randomOpenXZ(half, excludeOrigin, yTest) {
+  const y = yTest === undefined ? 1.45 : yTest;
+  const ex = excludeOrigin === undefined ? 4 : excludeOrigin;
+  for (let t = 0; t < 100; t++) {
+    const x = (Math.random() * 2 - 1) * half;
+    const z = (Math.random() * 2 - 1) * half;
+    if (Math.abs(x) < ex && Math.abs(z) < ex) continue;
+    const p = new THREE.Vector3(x, y, z);
+    if (!entityHitsWallAt(p)) return p;
+  }
+  for (let ring = 1; ring < 48; ring++) {
+    const ang = ring * 2.399963229728653;
+    const x = Math.cos(ang) * ring * 1.25;
+    const z = Math.sin(ang) * ring * 1.25;
+    if (Math.abs(x) >= half || Math.abs(z) >= half) continue;
+    const p = new THREE.Vector3(x, y, z);
+    if (!entityHitsWallAt(p)) return p;
+  }
+  return new THREE.Vector3(0, y, 14);
+}
+
+function freeSpawn() {
+  const p = randomOpenXZ(envSpawnHalfXZ, 4, 1.5);
+  return p.clone();
+}
+
+/** Push entity center out of penetrating wall boxes on XZ (smallest overlap axis). */
+function separateEntityFromWalls(pos) {
+  for (let iter = 0; iter < 14; iter++) {
+    entWallBox.setFromCenterAndSize(pos, entWallSize);
+    let wbHit = null;
+    for (const wb of wallBoxes) {
+      if (entWallBox.intersectsBox(wb)) {
+        wbHit = wb;
+        break;
+      }
+    }
+    if (!wbHit) return;
+    const penX =
+      Math.min(entWallBox.max.x, wbHit.max.x) - Math.max(entWallBox.min.x, wbHit.min.x);
+    const penZ =
+      Math.min(entWallBox.max.z, wbHit.max.z) - Math.max(entWallBox.min.z, wbHit.min.z);
+    if (penX <= 0 || penZ <= 0) {
+      pos.y += 0.06;
+      continue;
+    }
+    const midX = (wbHit.min.x + wbHit.max.x) * 0.5;
+    const midZ = (wbHit.min.z + wbHit.max.z) * 0.5;
+    const eps = 0.02;
+    if (penX < penZ) {
+      pos.x += pos.x < midX ? -(penX + eps) : penX + eps;
+    } else {
+      pos.z += pos.z < midZ ? -(penZ + eps) : penZ + eps;
+    }
+  }
+}
+
 const ENTITY_PAIR_SEP = 1.14;
 
 // ═══════════════════════════════════════════
@@ -1069,6 +1238,7 @@ const playerObj = controls.getObject();
   window.requestAnimationFrame(loop);
   const dt = Math.min(clock.getDelta(), 0.05);
   const t  = clock.elapsedTime;
+  const entXZLim = Math.min(29.8, envSpawnHalfXZ - 1.2);
 
   // ── Player movement ──
   if (gameActive && controls.isLocked) {
@@ -1158,13 +1328,14 @@ const playerObj = controls.getObject();
       ent.slideVx = vx;
       ent.slideVz = vz;
       m.position.set(x, py, z);
-      if (m.position.x > 29.5 || m.position.x < -29.5) {
+      const slideBound = entXZLim - 0.1;
+      if (m.position.x > slideBound || m.position.x < -slideBound) {
         ent.slideVx *= -1;
-        m.position.x = THREE.MathUtils.clamp(m.position.x, -30, 30);
+        m.position.x = THREE.MathUtils.clamp(m.position.x, -entXZLim, entXZLim);
       }
-      if (m.position.z > 29.5 || m.position.z < -29.5) {
+      if (m.position.z > slideBound || m.position.z < -slideBound) {
         ent.slideVz *= -1;
-        m.position.z = THREE.MathUtils.clamp(m.position.z, -30, 30);
+        m.position.z = THREE.MathUtils.clamp(m.position.z, -entXZLim, entXZLim);
       }
       m.rotation.y += dt * 0.4;
     } else {
@@ -1174,11 +1345,8 @@ const playerObj = controls.getObject();
 
       ent.targetTimer -= dt;
       if (ent.targetTimer <= 0) {
-        ent.target.set(
-          THREE.MathUtils.clamp((Math.random() - 0.5) * 60, -30, 30),
-          1.5,
-          THREE.MathUtils.clamp((Math.random() - 0.5) * 60, -30, 30)
-        );
+        const nt = randomOpenXZ(envSpawnHalfXZ, 2, 1.45);
+        ent.target.set(nt.x, 1.5, nt.z);
         ent.targetTimer = 3 + Math.random() * 4;
       }
       const dx = ent.target.x - m.position.x;
@@ -1195,8 +1363,8 @@ const playerObj = controls.getObject();
           ent.targetTimer = Math.min(ent.targetTimer, 0.2 + Math.random() * 0.35);
         }
       }
-      m.position.x = THREE.MathUtils.clamp(m.position.x, -30, 30);
-      m.position.z = THREE.MathUtils.clamp(m.position.z, -30, 30);
+      m.position.x = THREE.MathUtils.clamp(m.position.x, -entXZLim, entXZLim);
+      m.position.z = THREE.MathUtils.clamp(m.position.z, -entXZLim, entXZLim);
     }
   });
 
@@ -1231,14 +1399,14 @@ const playerObj = controls.getObject();
       if (ea.moveMode === 'drift' || ea.moveMode === 'bounce') {
         ea.target.x += sep.nx * 1.1;
         ea.target.z += sep.nz * 1.1;
-        ea.target.x = THREE.MathUtils.clamp(ea.target.x, -30, 30);
-        ea.target.z = THREE.MathUtils.clamp(ea.target.z, -30, 30);
+        ea.target.x = THREE.MathUtils.clamp(ea.target.x, -entXZLim, entXZLim);
+        ea.target.z = THREE.MathUtils.clamp(ea.target.z, -entXZLim, entXZLim);
       }
       if (eb.moveMode === 'drift' || eb.moveMode === 'bounce') {
         eb.target.x -= sep.nx * 1.1;
         eb.target.z -= sep.nz * 1.1;
-        eb.target.x = THREE.MathUtils.clamp(eb.target.x, -30, 30);
-        eb.target.z = THREE.MathUtils.clamp(eb.target.z, -30, 30);
+        eb.target.x = THREE.MathUtils.clamp(eb.target.x, -entXZLim, entXZLim);
+        eb.target.z = THREE.MathUtils.clamp(eb.target.z, -entXZLim, entXZLim);
       }
       if (ea.moveMode === 'orbit') ea.orbitAng += Math.random() > 0.5 ? 0.1 : -0.1;
       if (eb.moveMode === 'orbit') eb.orbitAng += Math.random() > 0.5 ? 0.1 : -0.1;
@@ -1248,11 +1416,10 @@ const playerObj = controls.getObject();
   entities.forEach(ent => {
     if (!ent.alive || ent.dying) return;
     const m = ent.mesh;
-    if (entityHitsWallAt(m.position)) {
-      if (ent.moveMode === 'orbit') ent.orbitR *= 0.88;
-      m.position.x = THREE.MathUtils.clamp(m.position.x, -28.5, 28.5);
-      m.position.z = THREE.MathUtils.clamp(m.position.z, -28.5, 28.5);
-    }
+    if (entityHitsWallAt(m.position) && ent.moveMode === 'orbit') ent.orbitR *= 0.88;
+    separateEntityFromWalls(m.position);
+    m.position.x = THREE.MathUtils.clamp(m.position.x, -entXZLim, entXZLim);
+    m.position.z = THREE.MathUtils.clamp(m.position.z, -entXZLim, entXZLim);
   });
 
   entities.forEach(ent => {
@@ -1275,6 +1442,12 @@ document.addEventListener(
   function (e) {
     if (!window.GameAudio) return;
     if (e.target === canvas && gameActive && controls.isLocked) return;
+    if (
+      e.target.closest(
+        '#hud-sound-toggle, #menu-sound-toggle, #hunt-sound-toggle, #pause-sound-toggle'
+      )
+    )
+      return;
     if (e.target.closest('button, .env-card, .modal-close, a')) GameAudio.uiClick();
   },
   true

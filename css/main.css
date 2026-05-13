@@ -85,7 +85,24 @@
     text-shadow: 0 2px 24px rgba(0,151,167,0.25);
     font-weight: bold;
   }
-  #env-screen .subtitle { color: #5a6578; font-size: 0.78rem; letter-spacing: 0.35em; margin-bottom: 3rem; }
+  #env-screen .subtitle { color: #5a6578; font-size: 0.78rem; letter-spacing: 0.35em; margin-bottom: 1rem; }
+
+  .menu-settings-row,
+  .hunt-settings-row,
+  .paused-settings-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .menu-settings-row { margin-bottom: 1.5rem; }
+  .hunt-settings-row { margin-bottom: 1rem; }
+  .paused-settings-row { margin-bottom: 1rem; }
+
+  .sound-menu-btn {
+    letter-spacing: 0.12em;
+    padding: 0.52rem 1.35rem;
+    font-size: 0.76rem;
+  }
 
   .env-grid {
     display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem;
@@ -132,6 +149,35 @@
 
   #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
   #hud.hidden { display: none; }
+
+  /* Only HUD control: must receive clicks while rest of HUD stays pointer-transparent */
+  #hud-sound-toggle.hud-sound-toggle {
+    position: absolute;
+    top: 0.85rem;
+    left: 0.85rem;
+    z-index: 12;
+    pointer-events: auto;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    border: 2px solid rgba(255, 255, 255, 0.55);
+    border-radius: 10px;
+    background: rgba(8, 12, 22, 0.82);
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+    transition: border-color 0.12s, background 0.12s, transform 0.12s;
+  }
+  #hud-sound-toggle.hud-sound-toggle:hover {
+    border-color: rgba(120, 220, 255, 0.95);
+    background: rgba(18, 32, 48, 0.92);
+    transform: scale(1.05);
+  }
+  #hud-sound-toggle.hud-sound-toggle:focus-visible {
+    outline: 2px solid #6ec8ff;
+    outline-offset: 2px;
+  }
 
   #xhair {
     position: absolute; top: 50%; left: 50%;

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HUNT — 3D Shape Hunter</title>
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<div id="top-nav">
+  <div id="top-nav-inner">
+    <button type="button" id="nav-toggle" aria-expanded="false" aria-label="Open menu" title="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <div id="nav-dropdown" class="hidden">
+    <button type="button" id="nav-main">MAIN MENU</button>
+    <button type="button" id="nav-help">HELP</button>
+    <button type="button" id="nav-credits">CREDITS</button>
+  </div>
+</div>
+
+<div id="modal-help" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="help-title">
+  <div class="modal-card">
+    <button type="button" class="modal-close" id="help-close" aria-label="Close">×</button>
+    <h2 id="help-title">HELP</h2>
+    <p><strong>HUNT</strong> is a first-person shape hunt. Only shoot targets that match your rule.</p>
+    <ul>
+      <li><strong>Move:</strong> WASD or arrow keys</li>
+      <li><strong>Look:</strong> mouse (pointer lock after you start)</li>
+      <li><strong>Shoot:</strong> left-click on a shape</li>
+      <li><strong>Pause:</strong> Esc — opens pause; click Resume to continue</li>
+      <li><strong>Menu:</strong> ☰ top-left — Help, Credits, Main menu</li>
+    </ul>
+    <p>Correct match +10 points. Wrong target −5. Clear all matching targets to finish the round.</p>
+  </div>
+</div>
+
+<div id="modal-credits" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="credits-title">
+  <div class="modal-card">
+    <button type="button" class="modal-close" id="credits-close" aria-label="Close">×</button>
+    <h2 id="credits-title">CREDITS</h2>
+    <p><strong>HUNT — 3D Shape Hunter</strong></p>
+    <p>Built with <a href="https://threejs.org/" target="_blank" rel="noopener">Three.js</a> (r128) and PointerLockControls. Procedural environments and entities — no external 3D assets.</p>
+    <p style="margin-top:1rem;font-size:0.72rem;color:#7a8799;">Thanks for playing.</p>
+  </div>
+</div>
+
+<canvas id="c"></canvas>
+<div id="vignette" class="hidden"></div>
+<div id="flash"></div>
+
+<!-- ENV PICKER -->
+<div id="env-screen" class="screen">
+  <div class="game-title">HUNT</div>
+  <div class="subtitle">CHOOSE YOUR ARENA</div>
+  <div class="env-grid">
+    <div class="env-card" data-env="dungeon">
+      <div class="icon">🏰</div>
+      <div class="name">DUNGEON</div>
+      <div class="desc">Stone pillars, narrow corridors, low ceiling</div>
+    </div>
+    <div class="env-card" data-env="forest">
+      <div class="icon">🌲</div>
+      <div class="name">FOREST</div>
+      <div class="desc">Ancient trunks, canopy fog, open clearing</div>
+    </div>
+    <div class="env-card" data-env="lab">
+      <div class="icon">🔬</div>
+      <div class="name">LAB</div>
+      <div class="desc">Grid floors, glass panels, cyan light strips</div>
+    </div>
+    <div class="env-card" data-env="ruins">
+      <div class="icon">🏛️</div>
+      <div class="name">RUINS</div>
+      <div class="desc">Broken columns, scattered walls, ember sky</div>
+    </div>
+  </div>
+  <button class="btn" id="env-btn" disabled>— SELECT AN ENVIRONMENT —</button>
+</div>
+
+<!-- HUNT RULE -->
+<div id="hunt-screen" class="screen hidden">
+  <div class="lbl">YOUR TARGET</div>
+  <div class="rule" id="rule-disp"></div>
+  <div class="hint">Correct hit +10 pts &nbsp;·&nbsp; Wrong click −5 pts</div>
+  <div class="hunt-actions">
+    <button class="btn" id="start-btn">LOCK AND LOAD →</button>
+    <button class="btn sec" type="button" id="back-arena-btn">← BACK TO ARENA</button>
+  </div>
+</div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="xhair"></div>
+  <div id="hud-left">
+    <div class="lbl">SCORE</div>
+    <div class="val" id="score-el">0</div>
+    <div class="lbl" style="margin-top:0.5rem">TARGETS</div>
+    <div class="val" id="targets-el">0</div>
+  </div>
+  <div id="hud-rule">
+    <div class="lbl">HUNTING</div>
+    <div class="badge" id="hud-badge"></div>
+  </div>
+  <div id="hud-hint">WASD / ARROWS · MOUSE LOOK · CLICK TO SHOOT · ESC PAUSE</div>
+</div>
+
+<!-- PAUSED -->
+<div id="paused" class="screen hidden">
+  <div class="p-title">PAUSED</div>
+  <div class="p-sub">Click to resume</div>
+  <div class="paused-actions">
+    <button class="btn" id="resume-btn">RESUME →</button>
+    <button class="btn sec" type="button" id="paused-menu-btn">MAIN MENU</button>
+  </div>
+</div>
+
+<!-- ROUND END -->
+<div id="round-end" class="screen hidden">
+  <div class="re-lbl">ROUND COMPLETE</div>
+  <div class="re-title">ALL TARGETS ELIMINATED</div>
+  <div class="re-score" id="final-score">0</div>
+  <div class="re-pts">POINTS</div>
+  <div class="btn-row">
+    <button class="btn" id="new-round-btn">NEW ROUND</button>
+    <button class="btn sec" id="change-env-btn">CHANGE ARENA</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1d28; font-family: 'Courier New', monospace; overflow: hidden; color: #e8eaf0; }
+  canvas { display: block; position: fixed; inset: 0; z-index: 1; }
+
+  /* Top bar: hamburger + menu (hidden while pointer-locked in-game) */
+  #top-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 40; pointer-events: none; }
+  #top-nav:not(.hidden) { pointer-events: auto; }
+  #top-nav.hidden { display: none !important; }
+  #top-nav-inner {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    background: rgba(255,255,255,0.92);
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  #nav-toggle {
+    width: 2.6rem; height: 2.6rem; border: 1px solid #c5cdd8;
+    background: #fff; border-radius: 6px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    padding: 0; flex-shrink: 0;
+  }
+  #nav-toggle:hover { border-color: #00b8d4; background: #f0fcff; }
+  #nav-toggle span { display: block; width: 16px; height: 2px; background: #2a3142; border-radius: 1px; }
+  #nav-dropdown {
+    position: absolute; top: 3.35rem; left: 0.75rem;
+    min-width: 220px; background: #fff; border: 1px solid #d8dee8;
+    border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+    overflow: hidden;
+  }
+  #nav-dropdown.hidden { display: none !important; }
+  #nav-dropdown button {
+    display: block; width: 100%; text-align: left; padding: 0.75rem 1rem;
+    border: none; border-bottom: 1px solid #eef2f7; background: #fff;
+    font-family: 'Courier New', monospace; font-size: 0.78rem;
+    letter-spacing: 0.12em; color: #2a3142; cursor: pointer;
+  }
+  #nav-dropdown button:last-child { border-bottom: none; }
+  #nav-dropdown button:hover { background: #f0fcff; color: #008799; }
+
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 45;
+    background: rgba(30,40,55,0.45);
+    display: flex; align-items: center; justify-content: center;
+    padding: 1.5rem;
+  }
+  .modal-overlay.hidden { display: none !important; }
+  .modal-card {
+    background: #fff; color: #2a3142; max-width: 420px; width: 100%;
+    border-radius: 10px; padding: 1.25rem 1.4rem 1.4rem;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.18);
+    position: relative;
+  }
+  .modal-card h2 { font-size: 1rem; letter-spacing: 0.2em; color: #008799; margin-bottom: 0.75rem; }
+  .modal-card p, .modal-card li { font-size: 0.8rem; line-height: 1.55; color: #3d4656; margin-bottom: 0.5rem; }
+  .modal-card ul { margin: 0.4rem 0 0 1.1rem; }
+  .modal-close {
+    position: absolute; top: 0.65rem; right: 0.65rem;
+    width: 2rem; height: 2rem; border: none; background: #eef2f7;
+    border-radius: 6px; cursor: pointer; font-size: 1.1rem; line-height: 1; color: #556;
+  }
+  .modal-close:hover { background: #dde4ef; color: #223; }
+
+  .screen {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 20;
+    background: rgba(232, 238, 245, 0.97);
+    color: #2a3142;
+  }
+  .screen.hidden { display: none !important; }
+
+  /* Home / env picker: bright */
+  #env-screen {
+    background: linear-gradient(165deg, #fbfdff 0%, #eef4fb 45%, #e4edf6 100%);
+    color: #1e2430;
+  }
+  #env-screen .game-title {
+    font-size: 5rem; letter-spacing: 0.5em;
+    color: #0097a7; margin-bottom: 0.15em;
+    text-shadow: 0 2px 24px rgba(0,151,167,0.25);
+    font-weight: bold;
+  }
+  #env-screen .subtitle { color: #5a6578; font-size: 0.78rem; letter-spacing: 0.35em; margin-bottom: 3rem; }
+
+  .env-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem;
+    margin-bottom: 2.5rem;
+  }
+  .env-card {
+    border: 1px solid #c5cdd8; border-radius: 8px;
+    padding: 1.4rem 1.7rem; cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+    min-width: 195px; text-align: left; background: #fff;
+  }
+  .env-card:hover { border-color: #00b8d4; background: #f7fdff; box-shadow: 0 4px 16px rgba(0,184,212,0.12); }
+  .env-card.sel   { border-color: #0097a7; background: #e8f8fa; box-shadow: 0 0 0 2px rgba(0,151,167,0.2); }
+  .env-card .icon { font-size: 1.6rem; margin-bottom: 0.45rem; }
+  .env-card .name { font-size: 0.88rem; color: #00838f; letter-spacing: 0.18em; margin-bottom: 0.3rem; }
+  .env-card .desc { font-size: 0.7rem; color: #5a6578; line-height: 1.5; }
+
+  .btn {
+    background: #fff; border: 1px solid #0097a7;
+    color: #00838f; padding: 0.72rem 2.4rem;
+    font-family: 'Courier New', monospace; font-size: 0.85rem;
+    letter-spacing: 0.18em; cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+  .btn:hover:not(:disabled) { background: #e0f7fa; box-shadow: 0 4px 18px rgba(0,151,167,0.18); }
+  .btn:disabled { border-color: #c5cdd8; color: #9aa8bc; cursor: default; background: #f3f5f8; }
+  .btn.sec { border-color: #9aa8bc; color: #5a6578; background: #fff; }
+  .btn.sec:hover { background: #f5f7fa; color: #2a3142; border-color: #7a8799; }
+  .btn-row { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+
+  #hunt-screen .lbl  { font-size: 0.7rem; color: #5a6578; letter-spacing: 0.35em; margin-bottom: 1rem; }
+  #hunt-screen .rule { font-size: 2.6rem; letter-spacing: 0.12em; margin-bottom: 0.4rem; font-weight: bold; }
+  #hunt-screen .hint { font-size: 0.7rem; color: #5a6578; margin-bottom: 1.2rem; }
+  .hunt-actions { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+  #hud.hidden { display: none; }
+
+  #xhair {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    width: 20px; height: 20px;
+  }
+  #xhair::before, #xhair::after {
+    content: ''; position: absolute; background: rgba(255,255,255,0.9);
+  }
+  #xhair::before { width: 2px; height: 100%; left: 50%; transform: translateX(-50%); }
+  #xhair::after  { height: 2px; width: 100%; top: 50%; transform: translateY(-50%); }
+
+  #hud-left { position: absolute; top: 1.2rem; left: 1.4rem; line-height: 1.8; }
+  #hud-left .lbl { color: rgba(255,255,255,0.55); font-size: 0.65rem; letter-spacing: 0.25em; }
+  #hud-left .val { color: #7df9ff; font-size: 1.4rem; text-shadow: 0 0 12px rgba(0,0,0,0.4); }
+
+  #hud-rule { position: absolute; top: 1.2rem; right: 1.4rem; text-align: right; }
+  #hud-rule .lbl { color: rgba(255,255,255,0.55); font-size: 0.62rem; letter-spacing: 0.25em; }
+  #hud-rule .badge {
+    display: inline-block; border: 1px solid;
+    padding: 0.22rem 0.65rem; margin-top: 0.28rem;
+    font-size: 0.82rem; letter-spacing: 0.12em;
+    background: rgba(0,0,0,0.25);
+  }
+
+  #hud-hint {
+    position: absolute; bottom: 1rem; left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.62rem; color: rgba(255,255,255,0.45); letter-spacing: 0.15em;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  }
+
+  #vignette {
+    position: fixed; inset: 0; pointer-events: none; z-index: 9;
+    background: radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(0,0,0,0.42) 100%);
+  }
+  #vignette.hidden { display: none; }
+
+  #flash {
+    position: fixed; inset: 0; pointer-events: none; z-index: 15;
+    opacity: 0; transition: opacity 0.07s;
+  }
+
+  #round-end .re-lbl   { font-size: 0.7rem; color: #5a6578; letter-spacing: 0.35em; margin-bottom: 0.5rem; }
+  #round-end .re-title { font-size: 1.8rem; color: #0097a7; letter-spacing: 0.2em; margin-bottom: 0.5rem; }
+  #round-end .re-score { font-size: 5.5rem; color: #1a1d28; font-weight: bold; line-height: 1; }
+  #round-end .re-pts   { font-size: 0.65rem; color: #7a8799; letter-spacing: 0.35em; margin-bottom: 2.8rem; }
+
+  #paused .p-title { font-size: 2rem; color: #0097a7; letter-spacing: 0.35em; margin-bottom: 0.8rem; }
+  #paused .p-sub   { font-size: 0.72rem; color: #5a6578; letter-spacing: 0.2em; margin-bottom: 2.2rem; }
+  #paused .paused-actions { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+  .modal-card a { color: #008799; }

@@ -4,6 +4,7 @@ import {
   DynamicTexture,
   Mesh as BabylonMesh,
   MeshBuilder,
+  PBRMaterial,
   StandardMaterial,
   TransformNode,
   Vector3,
@@ -11,7 +12,7 @@ import {
 
 import { COLORS, generateHuntRule, SHAPES } from '@lib/game-rules.js';
 
-import { styleSurfaceMaterial } from './material-style';
+import { stylePbrSurfaceMaterial } from './material-style';
 
 export { resolveEntityIdFromChain, resolveEntityIdFromPick } from './entity-pick';
 
@@ -127,12 +128,11 @@ export function createSolidEntity(
   root.position.copyFrom(position);
 
   const body = buildShapeMesh(scene, shape, `${entityId}_body`);
-  const mat = new StandardMaterial(`ent_body_${entityId}`, scene);
-  mat.specularColor = Color3.Black();
-  rgbToColor3(colorHex, mat.diffuseColor);
-  mat.emissiveColor.copyFrom(mat.diffuseColor);
+  const mat = new PBRMaterial(`ent_body_${entityId}`, scene);
+  rgbToColor3(colorHex, mat.albedoColor);
+  mat.emissiveColor.copyFrom(mat.albedoColor);
   mat.emissiveColor.scaleInPlace(0.14);
-  styleSurfaceMaterial(mat, 'huntSolid');
+  stylePbrSurfaceMaterial(mat, 'huntSolid');
   body.material = mat;
   body.parent = root;
 

@@ -1,4 +1,4 @@
-import { Color3, StandardMaterial } from '@babylonjs/core';
+import { Color3, PBRMaterial, StandardMaterial } from '@babylonjs/core';
 
 /** Cheap Lambert-ish polish: ambient fill + mild specular (no textures). */
 export type MaterialSurfaceRole =
@@ -86,6 +86,69 @@ export function styleSurfaceMaterial(mat: StandardMaterial, role: MaterialSurfac
       mat.ambientColor.scaleInPlace(0.24);
       mat.specularColor = Color3.FromInts(48, 50, 54);
       mat.specularPower = 58;
+      break;
+    default:
+      break;
+  }
+}
+
+/** PBR tuning for image-based lighting (paired with `scene.environmentTexture`). */
+export function stylePbrSurfaceMaterial(mat: PBRMaterial, role: MaterialSurfaceRole): void {
+  mat.metallic = 0;
+  mat.roughness = 0.72;
+  switch (role) {
+    case 'floorMain':
+      mat.metallic = 0.025;
+      mat.roughness = 0.91;
+      break;
+    case 'floorPatch':
+      mat.metallic = 0.025;
+      mat.roughness = 0.88;
+      break;
+    case 'wall':
+      mat.metallic = 0;
+      mat.roughness = 0.86;
+      break;
+    case 'glass':
+      mat.metallic = 0.07;
+      mat.roughness = 0.16;
+      break;
+    case 'ceiling':
+      mat.metallic = 0;
+      mat.roughness = 0.9;
+      break;
+    case 'foliage':
+    case 'canopy':
+      mat.metallic = 0;
+      mat.roughness = 0.96;
+      break;
+    case 'trunk':
+      mat.metallic = 0;
+      mat.roughness = 0.9;
+      break;
+    case 'huntSolid':
+      mat.metallic = 0.06;
+      mat.roughness = 0.49;
+      break;
+    case 'prop':
+      mat.metallic = 0.035;
+      mat.roughness = 0.78;
+      break;
+    case 'metal':
+      mat.metallic = 0.9;
+      mat.roughness = 0.33;
+      break;
+    case 'stone':
+      mat.metallic = 0;
+      mat.roughness = 0.95;
+      break;
+    case 'wood':
+      mat.metallic = 0;
+      mat.roughness = 0.82;
+      break;
+    case 'ceramic':
+      mat.metallic = 0.04;
+      mat.roughness = 0.37;
       break;
     default:
       break;

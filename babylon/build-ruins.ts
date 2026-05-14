@@ -1,6 +1,7 @@
 import {
   DynamicTexture,
   Light,
+  Mesh,
   Scene,
   Vector3,
 } from '@babylonjs/core';
@@ -16,8 +17,7 @@ import {
   addSunLight,
   addWallBox,
   addWallBoxRotY,
-  applyDiffuseHex,
-  disposeArenaResources,
+  makeArenaBuildResult,
   setAzureBackgroundExp2Fog,
   type ArenaBuildResult,
 } from './arena-shared';
@@ -139,10 +139,5 @@ export function buildRuinsScene(scene: Scene): ArenaBuildResult {
 
   const spawnPosition = new Vector3(0, 1.7, 0);
 
-  return {
-    wallBoxes,
-    envSpawnHalfXZ,
-    spawnPosition,
-    dispose: () => disposeArenaResources(meshes, lights, textures),
-  };
+  return makeArenaBuildResult(scene, meshes, lights, textures, wallBoxes, envSpawnHalfXZ, spawnPosition);
 }

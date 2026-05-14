@@ -1,5 +1,6 @@
 import {
   Engine,
+  CubeTexture,
   ImageProcessingConfiguration,
   Scene,
   UniversalCamera,
@@ -71,9 +72,14 @@ const scene = new Scene(engine);
   const ipc = scene.imageProcessingConfiguration;
   ipc.toneMappingEnabled = true;
   ipc.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
-  ipc.exposure = 1.16;
-  ipc.contrast = 1.04;
+  ipc.exposure = 1.12;
+  ipc.contrast = 1.06;
 }
+
+const iblPath = `${import.meta.env.BASE_URL}assets/textures/environmentSpecular.env`;
+const envCube = CubeTexture.CreateFromPrefilteredData(iblPath, scene);
+scene.environmentTexture = envCube;
+scene.environmentIntensity = 0.84;
 
 function syncCanvasToEngineSize(): void {
   engine.resize();
@@ -188,6 +194,7 @@ function showHuntScreen(): void {
     envSpawnHalfXZ: arena.envSpawnHalfXZ,
     rule: currentRule,
   });
+  arena.registerEntityShadowMeshes?.(entities.map((e) => e.body));
   shootRuntime.matchLeft = entities.filter((e) => e.isMatch).length;
 
   ruleDisp.textContent = currentRule.lines.join('\n');

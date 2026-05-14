@@ -8,15 +8,17 @@ import {
   Light,
   Mesh,
   MeshBuilder,
+  PBRMaterial,
   PointLight,
   Scene,
+  ShadowGenerator,
   StandardMaterial,
   Texture,
   Vector3,
 } from '@babylonjs/core';
 
 import { envTintHex, wallColorInPalette } from './env-colors';
-import { styleSurfaceMaterial, type MaterialSurfaceRole } from './material-style';
+import { stylePbrSurfaceMaterial, type MaterialSurfaceRole } from './material-style';
 import {
   pushWallBoxCenterSize,
   pushWallBoxCenterSizeRotY,
@@ -31,6 +33,8 @@ export type ArenaBuildResult = {
   wallBoxes: WallAABB[];
   envSpawnHalfXZ: number;
   spawnPosition: Vector3;
+  /** Optional: register hunt entity bodies for shadow cast/receive after spawn. */
+  registerEntityShadowMeshes?: (bodies: AbstractMesh[]) => void;
   dispose: () => void;
 };
 
@@ -54,6 +58,10 @@ export function rgbToColor3(rgb: number, out: Color3): void {
 export function applyDiffuseHex(mat: StandardMaterial, rgb: number): void {
   rgbToColor3(rgb, mat.diffuseColor);
   mat.specularColor.set(0, 0, 0);
+}
+
+export function applyAlbedoHex(mat: PBRMaterial, rgb: number): void {
+  rgbToColor3(rgb, mat.albedoColor);
 }
 
 function getOrCreateSkyGradientTexture(
@@ -226,17 +234,16 @@ export function addBox(
   );
   mesh.position.set(x, y, z);
   if (ry) mesh.rotation.y = ry;
-  const mat = new StandardMaterial(`m_${meshes.length}`, scene);
-  mat.specularColor = Color3.Black();
+  const mat = new PBRMaterial(`m_${meshes.length}`, scene);
   if (opacity < 1) {
     mat.alpha = opacity;
-    mat.transparencyMode = StandardMaterial.MATERIAL_ALPHABLEND;
+    mat.transparencyMode = PBRMaterial.PBRMATERIAL_ALPHABLEND;
   }
-  applyDiffuseHex(mat, color);
+  applyAlbedoHex(mat, color);
   if (isWall) {
-    styleSurfaceMaterial(mat, 'wall');
+    stylePbrSurfaceMaterial(mat, 'wall');
   } else if (surfaceHint !== 'none') {
-    styleSurfaceMaterial(mat, surfaceHint);
+    stylePbrSurfaceMaterial(mat, surfaceHint);
   }
   mesh.material = mat;
   meshes.push(mesh);
@@ -283,10 +290,9 @@ export function addWallBoxRotY(
   const mesh = MeshBuilder.CreateBox(`wall_r_${meshes.length}`, { width: w, height: h, depth: d }, scene);
   mesh.position.set(x, y, z);
   mesh.rotation.y = ry;
-  const mat = new StandardMaterial(`wm_${meshes.length}`, scene);
-  mat.specularColor = Color3.Black();
-  applyDiffuseHex(mat, col);
-  styleSurfaceMaterial(mat, 'wall');
+  const mat = new PBRMaterial(`wm_${meshes.length}`, scene);
+  applyAlbedoHex(mat, col);
+  stylePbrSurfaceMaterial(mat, 'wall');
   mesh.material = mat;
   meshes.push(mesh);
   pushWallBoxCenterSizeRotY(wallBoxes, x, y, z, w, h, d, ry);
@@ -317,9 +323,9 @@ export function addFloor(
     { width: size, height: size, subdivisions: 6 },
     scene,
   );
-  const mat = new StandardMaterial(`floorMat_${meshes.length}`, scene);
-  applyDiffuseHex(mat, base);
-  styleSurfaceMaterial(mat, 'floorMain');
+  const mat = new PBRMaterial(`floorMat_${meshes.length}`, scene);
+  applyAlbedoHex(mat, base);
+  stylePbrSurfaceMaterial(mat, 'floorMain');
   main.material = mat;
   meshes.push(main);
 
@@ -452,7 +458,7 @@ export function addSkySphere(
 /** Directional warm sun `0xfff6ec` intensity 0.62, direction from (36,52,18). */
 export function addSunLight(scene: Scene, lights: Light[]): void {
   const sun = new DirectionalLight(
-    'sun',
+    'arenaSun',
     new Vector3(-36, -52, -18).normalize(),
     scene,
   );
@@ -515,4 +521,70 @@ export function disposeArenaResources(
   for (const t of textures) {
     t.dispose();
   }
+}
+
+function meshShouldCastShadow(mesh: Mesh): boolean {
+  if (mesh.name === 'sky') return false;
+  if (mesh.name.startsWith('cloudPlane_')) return false;
+  const mat = mesh.material;
+  if (mat && 'disableLighting' in mat && (mat as StandardMaterial).disableLighting) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Exponential blur shadows from the `arenaSun` directional. Skips unlit deco / sky / clouds.
+ */
+export function attachArenaShadows(scene: Scene, lights: Light[], meshes: Mesh[]): ShadowGenerator | null {
+  const sun = lights.find(
+    (l): l is DirectionalLight => l instanceof DirectionalLight && l.name === 'arenaSun',
+  );
+  if (!sun) return null;
+
+  const sg = new ShadowGenerator(2048, sun);
+  sg.useBlurExponentialShadowMap = true;
+  sg.blurKernel = 26;
+  sg.darkness = 0.38;
+  sg.bias = 0.00065;
+  sg.normalBias = 0.018;
+
+  for (const m of meshes) {
+    m.receiveShadows = true;
+    if (meshShouldCastShadow(m)) {
+      sg.addShadowCaster(m, true);
+    }
+  }
+  return sg;
+}
+
+/**
+ * Wrap arena build with shadow setup and resource disposal (IBL is scene-wide from `main`).
+ */
+export function makeArenaBuildResult(
+  scene: Scene,
+  meshes: Mesh[],
+  lights: Light[],
+  textures: DynamicTexture[],
+  wallBoxes: WallAABB[],
+  envSpawnHalfXZ: number,
+  spawnPosition: Vector3,
+): ArenaBuildResult {
+  const shadowGen = attachArenaShadows(scene, lights, meshes);
+  return {
+    wallBoxes,
+    envSpawnHalfXZ,
+    spawnPosition,
+    registerEntityShadowMeshes(bodies: AbstractMesh[]) {
+      if (!shadowGen) return;
+      for (const b of bodies) {
+        b.receiveShadows = true;
+        shadowGen.addShadowCaster(b);
+      }
+    },
+    dispose: () => {
+      shadowGen?.dispose();
+      disposeArenaResources(meshes, lights, textures);
+    },
+  };
 }

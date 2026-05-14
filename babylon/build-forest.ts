@@ -3,8 +3,8 @@ import {
   Light,
   Mesh,
   MeshBuilder,
+  PBRMaterial,
   Scene,
-  StandardMaterial,
   Vector3,
 } from '@babylonjs/core';
 
@@ -17,13 +17,13 @@ import {
   addSoftClouds,
   addSunLight,
   addWallBox,
-  applyDiffuseHex,
-  disposeArenaResources,
+  applyAlbedoHex,
+  makeArenaBuildResult,
   setAzureBackgroundExp2Fog,
   type ArenaBuildResult,
 } from './arena-shared';
 import { envTintHex, palettePick, propColorDrift } from './env-colors';
-import { styleSurfaceMaterial } from './material-style';
+import { stylePbrSurfaceMaterial } from './material-style';
 import { pushWallBoxCenterSize, type WallAABB } from './wall-collision';
 
 export const FOREST_ENV_SPAWN_HALF_XZ = 40;
@@ -93,10 +93,10 @@ export function buildForestScene(scene: Scene): ArenaBuildResult {
       scene,
     );
     trunk.position.set(x, h / 2, z);
-    const tmat = new StandardMaterial(`tmat_${x}_${z}`, scene);
+    const tmat = new PBRMaterial(`tmat_${x}_${z}`, scene);
     const tb = TRUNK_BASES[palettePick(trunkSalt, TRUNK_BASES.length)]!;
-    applyDiffuseHex(tmat, propColorDrift(tb, trunkSalt, 0.15));
-    styleSurfaceMaterial(tmat, 'trunk');
+    applyAlbedoHex(tmat, propColorDrift(tb, trunkSalt, 0.15));
+    stylePbrSurfaceMaterial(tmat, 'trunk');
     trunk.material = tmat;
     meshes.push(trunk);
     pushWallBoxCenterSize(wallBoxes, x, h / 2, z, rb * 2, h, rb * 2);
@@ -112,10 +112,10 @@ export function buildForestScene(scene: Scene): ArenaBuildResult {
         scene,
       );
       canopy.position.set(x, h - 0.5 + off + coneH / 2, z);
-      const cmat = new StandardMaterial(`cmat_${x}_${z}_${i}`, scene);
+      const cmat = new PBRMaterial(`cmat_${x}_${z}_${i}`, scene);
       const lb = LEAF_BASES[palettePick(leafSalt, LEAF_BASES.length)]!;
-      applyDiffuseHex(cmat, propColorDrift(lb, leafSalt, 0.13));
-      styleSurfaceMaterial(cmat, 'canopy');
+      applyAlbedoHex(cmat, propColorDrift(lb, leafSalt, 0.13));
+      stylePbrSurfaceMaterial(cmat, 'canopy');
       canopy.material = cmat;
       meshes.push(canopy);
     }
@@ -136,10 +136,10 @@ export function buildForestScene(scene: Scene): ArenaBuildResult {
       scene,
     );
     rock.position.set(x, 0.4, z);
-    const rmat = new StandardMaterial(`rmat_${x}_${z}`, scene);
+    const rmat = new PBRMaterial(`rmat_${x}_${z}`, scene);
     const rk = ROCK_BASES[palettePick(x * 83 + z * 59, ROCK_BASES.length)]!;
-    applyDiffuseHex(rmat, propColorDrift(rk, x * 83 + z * 59, 0.12));
-    styleSurfaceMaterial(rmat, 'stone');
+    applyAlbedoHex(rmat, propColorDrift(rk, x * 83 + z * 59, 0.12));
+    stylePbrSurfaceMaterial(rmat, 'stone');
     rock.material = rmat;
     meshes.push(rock);
     pushWallBoxCenterSize(wallBoxes, x, 0.4, z, rockSize * 2.2, rockSize * 2.2, rockSize * 2.2);
@@ -151,10 +151,5 @@ export function buildForestScene(scene: Scene): ArenaBuildResult {
 
   const spawnPosition = new Vector3(0, 1.7, 0);
 
-  return {
-    wallBoxes,
-    envSpawnHalfXZ,
-    spawnPosition,
-    dispose: () => disposeArenaResources(meshes, lights, textures),
-  };
+  return makeArenaBuildResult(scene, meshes, lights, textures, wallBoxes, envSpawnHalfXZ, spawnPosition);
 }

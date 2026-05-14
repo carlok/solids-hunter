@@ -4,6 +4,7 @@ import {
   Light,
   Mesh,
   MeshBuilder,
+  PBRMaterial,
   PointLight,
   Scene,
   StandardMaterial,
@@ -18,13 +19,14 @@ import {
   addSkySphere,
   addSunLight,
   addWallBox,
+  applyAlbedoHex,
   applyDiffuseHex,
-  disposeArenaResources,
+  makeArenaBuildResult,
   setAzureBackgroundLinearFog,
   type ArenaBuildResult,
 } from './arena-shared';
 import { envTintHex, propColorDrift } from './env-colors';
-import { styleSurfaceMaterial } from './material-style';
+import { stylePbrSurfaceMaterial } from './material-style';
 import { pushWallBoxCenterSize, type WallAABB } from './wall-collision';
 
 /** Matches `buildEnv('lab')` → `envSpawnHalfXZ` in js/main.js */
@@ -52,9 +54,9 @@ export function buildLabScene(scene: Scene): ArenaBuildResult {
   const ceil = MeshBuilder.CreatePlane('ceil', { width: 65, height: 65 }, scene);
   ceil.rotation.x = Math.PI / 2;
   ceil.position.y = 6.5;
-  const ceilMat = new StandardMaterial('ceilMat', scene);
-  applyDiffuseHex(ceilMat, envTintHex(0x456080, 19));
-  styleSurfaceMaterial(ceilMat, 'ceiling');
+  const ceilMat = new PBRMaterial('ceilMat', scene);
+  applyAlbedoHex(ceilMat, envTintHex(0x456080, 19));
+  stylePbrSurfaceMaterial(ceilMat, 'ceiling');
   ceil.material = ceilMat;
   meshes.push(ceil);
 
@@ -95,9 +97,9 @@ export function buildLabScene(scene: Scene): ArenaBuildResult {
     const panelSalt = x * 19 + y * 7 + z * 13 + w * 3;
     const mesh = MeshBuilder.CreateBox(`panel_${x}_${z}`, { width: w, height: h, depth: d }, scene);
     mesh.position.set(x, y, z);
-    const pm = new StandardMaterial(`pm_${x}_${z}`, scene);
-    applyDiffuseHex(pm, envTintHex(0x4a6a8a, panelSalt));
-    styleSurfaceMaterial(pm, 'glass');
+    const pm = new PBRMaterial(`pm_${x}_${z}`, scene);
+    applyAlbedoHex(pm, envTintHex(0x4a6a8a, panelSalt));
+    stylePbrSurfaceMaterial(pm, 'glass');
     mesh.material = pm;
     meshes.push(mesh);
     pushWallBoxCenterSize(wallBoxes, x, y, z, w, h, d);
@@ -160,10 +162,5 @@ export function buildLabScene(scene: Scene): ArenaBuildResult {
 
   const spawnPosition = new Vector3(0, 1.7, 0);
 
-  return {
-    wallBoxes,
-    envSpawnHalfXZ,
-    spawnPosition,
-    dispose: () => disposeArenaResources(meshes, lights, textures),
-  };
+  return makeArenaBuildResult(scene, meshes, lights, textures, wallBoxes, envSpawnHalfXZ, spawnPosition);
 }

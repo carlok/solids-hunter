@@ -3,8 +3,8 @@ import {
   Light,
   Mesh,
   MeshBuilder,
+  PBRMaterial,
   Scene,
-  StandardMaterial,
   Vector3,
 } from '@babylonjs/core';
 
@@ -16,13 +16,13 @@ import {
   addSkySphere,
   addSunLight,
   addWallBox,
-  applyDiffuseHex,
-  disposeArenaResources,
+  applyAlbedoHex,
+  makeArenaBuildResult,
   setAzureBackgroundLinearFog,
   type ArenaBuildResult,
 } from './arena-shared';
 import { envTintHex, propColorDrift } from './env-colors';
-import { styleSurfaceMaterial } from './material-style';
+import { stylePbrSurfaceMaterial } from './material-style';
 import type { WallAABB } from './wall-collision';
 
 export const DUNGEON_ENV_SPAWN_HALF_XZ = 32;
@@ -47,9 +47,9 @@ export function buildDungeonScene(scene: Scene): ArenaBuildResult {
   const ceil = MeshBuilder.CreatePlane('dungeonCeil', { width: 70, height: 70 }, scene);
   ceil.rotation.x = Math.PI / 2;
   ceil.position.y = 5.5;
-  const ceilMat = new StandardMaterial('dungeonCeilMat', scene);
-  applyDiffuseHex(ceilMat, envTintHex(0x302018, 11));
-  styleSurfaceMaterial(ceilMat, 'ceiling');
+  const ceilMat = new PBRMaterial('dungeonCeilMat', scene);
+  applyAlbedoHex(ceilMat, envTintHex(0x302018, 11));
+  stylePbrSurfaceMaterial(ceilMat, 'ceiling');
   ceil.material = ceilMat;
   meshes.push(ceil);
 
@@ -116,10 +116,5 @@ export function buildDungeonScene(scene: Scene): ArenaBuildResult {
 
   const spawnPosition = new Vector3(6, 1.7, 8);
 
-  return {
-    wallBoxes,
-    envSpawnHalfXZ,
-    spawnPosition,
-    dispose: () => disposeArenaResources(meshes, lights, textures),
-  };
+  return makeArenaBuildResult(scene, meshes, lights, textures, wallBoxes, envSpawnHalfXZ, spawnPosition);
 }

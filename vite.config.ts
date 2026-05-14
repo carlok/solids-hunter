@@ -15,19 +15,31 @@ function rootAssetsPlugin(): Plugin {
         const fp = resolve(__dirname, '.' + raw);
         if (!fp.startsWith(assetsRoot)) return next();
         if (!fs.existsSync(fp) || !fs.statSync(fp).isFile()) return next();
-        res.setHeader('Content-Type', 'audio/wav');
+        const ctype = raw.endsWith('.wav')
+          ? 'audio/wav'
+          : raw.endsWith('.env')
+            ? 'application/octet-stream'
+            : 'application/octet-stream';
+        res.setHeader('Content-Type', ctype);
         fs.createReadStream(fp).pipe(res);
       });
     },
   };
 }
 
-/** Production: copy repo `assets/sounds` → `dist-babylon/assets/sounds` (dev uses middleware only). */
+/** Production: copy repo `assets/sounds` → `dist-babylon/assets/sounds`, textures for IBL. */
 function copySoundsToDistPlugin(): Plugin {
   return {
     name: 'copy-repo-sounds-to-dist',
     apply: 'build',
     closeBundle() {
+      const texSrc = resolve(__dirname, 'assets/textures');
+      const texDest = resolve(__dirname, 'dist-babylon/assets/textures');
+      if (fs.existsSync(texSrc)) {
+        fs.mkdirSync(texDest, { recursive: true });
+        fs.cpSync(texSrc, texDest, { recursive: true });
+      }
+
       const src = resolve(__dirname, 'assets/sounds');
       const dest = resolve(__dirname, 'dist-babylon/assets/sounds');
       if (!fs.existsSync(src)) return;

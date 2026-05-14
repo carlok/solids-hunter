@@ -16,15 +16,16 @@ import {
 } from '@babylonjs/core';
 
 import { envTintHex, wallColorInPalette } from './env-colors';
+import { styleSurfaceMaterial } from './material-style';
 import {
   pushWallBoxCenterSize,
   pushWallBoxCenterSizeRotY,
   type WallAABB,
 } from './wall-collision';
 
-/** Same as `js/main.js` SKY_AZURE / SKY_AZURE_HORIZON. */
-export const SKY_AZURE = 0x6ec8ff;
-export const SKY_AZURE_HORIZON = 0xc4ecff;
+/** Same as `js/main.js` SKY_AZURE / SKY_AZURE_HORIZON — lifted for a clearer day read. */
+export const SKY_AZURE = 0x7ed8ff;
+export const SKY_AZURE_HORIZON = 0xd6f2ff;
 
 export type ArenaBuildResult = {
   wallBoxes: WallAABB[];
@@ -62,10 +63,10 @@ function getOrCreateSkyGradientTexture(
   const tex = new DynamicTexture('skyTex', { width: 4, height: 128 }, scene, false);
   const ctx = tex.getContext();
   const grd = ctx.createLinearGradient(0, 0, 0, 128);
-  grd.addColorStop(0, '#4ab8ff');
-  grd.addColorStop(0.35, '#6ec8ff');
-  grd.addColorStop(0.7, '#9bdcff');
-  grd.addColorStop(1, '#d4f2ff');
+  grd.addColorStop(0, '#5ec4ff');
+  grd.addColorStop(0.32, '#7ed8ff');
+  grd.addColorStop(0.68, '#a8e8ff');
+  grd.addColorStop(1, '#eaf8ff');
   ctx.fillStyle = grd;
   ctx.fillRect(0, 0, 4, 128);
   tex.update(true);
@@ -216,6 +217,7 @@ export function addBox(
   isWall: boolean,
   wallBoxes: WallAABB[],
   opacity = 1,
+  surfaceHint: 'none' | 'floorPatch' | 'prop' = 'none',
 ): Mesh {
   const mesh = MeshBuilder.CreateBox(
     `env_${meshes.length}`,
@@ -231,6 +233,13 @@ export function addBox(
     mat.transparencyMode = StandardMaterial.MATERIAL_ALPHABLEND;
   }
   applyDiffuseHex(mat, color);
+  if (isWall) {
+    styleSurfaceMaterial(mat, 'wall');
+  } else if (surfaceHint === 'floorPatch') {
+    styleSurfaceMaterial(mat, 'floorPatch');
+  } else if (surfaceHint === 'prop') {
+    styleSurfaceMaterial(mat, 'prop');
+  }
   mesh.material = mat;
   meshes.push(mesh);
   if (isWall) pushWallBoxCenterSize(wallBoxes, x, y, z, w, h, d);
@@ -279,35 +288,55 @@ export function addWallBoxRotY(
   const mat = new StandardMaterial(`wm_${meshes.length}`, scene);
   mat.specularColor = Color3.Black();
   applyDiffuseHex(mat, col);
+  styleSurfaceMaterial(mat, 'wall');
   mesh.material = mat;
   meshes.push(mesh);
   pushWallBoxCenterSizeRotY(wallBoxes, x, y, z, w, h, d, ry);
 }
+
+/** Lift RGB toward white for brighter floors / fills (0..1). */
+export function liftRgb(rgb: number, t: number): number {
+  const r = (rgb >> 16) & 0xff;
+  const g = (rgb >> 8) & 0xff;
+  const b = rgb & 0xff;
+  const L = (n: number) => Math.min(255, Math.round(n + (255 - n) * t));
+  return (L(r) << 16) | (L(g) << 8) | L(b);
+}
+
+/** Minecraft-ish ground accents: flat patches + small voxels (no wall collision). */
+export type ArenaFloorStyle = 'lab' | 'dungeon' | 'forest' | 'ruins';
 
 export function addFloor(
   scene: Scene,
   meshes: Mesh[],
   size: number,
   baseColor: number,
+  style: ArenaFloorStyle = 'lab',
 ): void {
+  const base = liftRgb(baseColor, 0.32);
   const main = MeshBuilder.CreateGround(
     `floor_${meshes.length}`,
     { width: size, height: size, subdivisions: 2 },
     scene,
   );
   const mat = new StandardMaterial(`floorMat_${meshes.length}`, scene);
-  mat.specularColor = Color3.Black();
-  applyDiffuseHex(mat, baseColor);
+  applyDiffuseHex(mat, base);
+  styleSurfaceMaterial(mat, 'floorMain');
   main.material = mat;
   meshes.push(main);
 
-  const seed = (baseColor ^ Math.imul(size, 73856093)) >>> 0;
+  const seed = (baseColor ^ Math.imul(size, 73856093) ^ style.charCodeAt(0) * 131) >>> 0;
   const rnd = mulberry32(seed);
-  const patchColors = [
-    0x6b8e23, 0x8b7355, 0xcd853f, 0x696969, 0x4682b4, 0x2f4f4f, 0x8fbc8f, 0xa0522d,
-    0x556b2f, 0xbc8f8f, 0xdaa520, 0x708090, 0x5f9ea0, 0x8b4513,
-  ];
-  const n = 9 + Math.floor(rnd() * 8);
+
+  const patchesByStyle: Record<ArenaFloorStyle, number[]> = {
+    lab: [0x5a8ab8, 0x7eb8d8, 0x4a78a0, 0xa0d0f0, 0x3a6888, 0xb8e0f8],
+    dungeon: [0x6c4838, 0x8a6248, 0x543028, 0x7a5848, 0x402018, 0x9a7258],
+    forest: [0x558b2f, 0x6b8e23, 0x8b7355, 0x33691e, 0xa1887f, 0x5d4037, 0x689f38, 0x795548],
+    ruins: [0xc8b8a8, 0xa89078, 0x8d6e63, 0xd7ccc8, 0x795548, 0xbcaaa4, 0xa1887f],
+  };
+  const patchColors = patchesByStyle[style];
+
+  const n = 11 + Math.floor(rnd() * 9);
   const margin = 3;
   for (let i = 0; i < n; i++) {
     const pw = 2.2 + rnd() * 9;
@@ -316,6 +345,7 @@ export function addFloor(
     const x = (rnd() * 2 - 1) * Math.max(0, half - pw * 0.5);
     const z = (rnd() * 2 - 1) * Math.max(0, half - pd * 0.5);
     const col = patchColors[Math.floor(rnd() * patchColors.length)]!;
+    const py = 0.055 + rnd() * 0.04 + i * 0.0018;
     addBox(
       scene,
       meshes,
@@ -324,11 +354,41 @@ export function addFloor(
       pd,
       envTintHex(col, x * 83 + z * 59 + i * 17),
       x,
-      0.028,
+      py,
       z,
       rnd() * Math.PI * 2,
       false,
       [],
+      1,
+      'floorPatch',
+    );
+  }
+
+  const voxelN =
+    style === 'forest' ? 34 : style === 'ruins' ? 28 : style === 'dungeon' ? 24 : 20;
+  for (let i = 0; i < voxelN; i++) {
+    const bx = 0.32 + rnd() * 0.55;
+    const bz = 0.32 + rnd() * 0.55;
+    const by = 0.26 + rnd() * 0.48;
+    const halfS = size * 0.5 - margin - 1;
+    const x = (rnd() * 2 - 1) * halfS;
+    const z = (rnd() * 2 - 1) * halfS;
+    const col = patchColors[Math.floor(rnd() * patchColors.length)]!;
+    addBox(
+      scene,
+      meshes,
+      bx,
+      by,
+      bz,
+      envTintHex(col, x * 101 + z * 73 + i * 31 + style.length),
+      x,
+      by * 0.5,
+      z,
+      rnd() < 0.2 ? rnd() * 0.08 : 0,
+      false,
+      [],
+      1,
+      'prop',
     );
   }
 }
@@ -360,7 +420,7 @@ export function addSunLight(scene: Scene, lights: Light[]): void {
     scene,
   );
   sun.diffuse = Color3.FromInts(0xff, 0xf6, 0xec);
-  sun.intensity = 0.62;
+  sun.intensity = 0.95;
   lights.push(sun);
 }
 

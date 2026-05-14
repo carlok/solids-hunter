@@ -34,14 +34,14 @@ export function buildRuinsScene(scene: Scene): ArenaBuildResult {
   const wallBoxes: WallAABB[] = [];
   const envSpawnHalfXZ = RUINS_ENV_SPAWN_HALF_XZ;
 
-  setAzureBackgroundExp2Fog(scene, 0.009);
+  setAzureBackgroundExp2Fog(scene, 0.0058);
 
-  addAmbientFill(scene, lights, 0xc8b8a8, 0.55);
-  addDirFromPosition(scene, lights, 0xffaa77, 0.65, 10, 20, 5);
-  addPoint(scene, lights, 0xff6622, 0.58, -13, 4, -13, 52);
-  addPoint(scene, lights, 0xff8844, 0.48, 16, 3, 16, 40);
+  addAmbientFill(scene, lights, 0xf0e4d4, 0.66);
+  addDirFromPosition(scene, lights, 0xffcc99, 0.72, 10, 22, 5);
+  addPoint(scene, lights, 0xffaa66, 0.62, -13, 5, -13, 56);
+  addPoint(scene, lights, 0xffb88a, 0.52, 16, 4, 16, 44);
 
-  addFloor(scene, meshes, 90, 0x1a140e);
+  addFloor(scene, meshes, 90, 0x5c5044, 'ruins');
 
   const rPerimLo = 0x321c10;
   const rPerimHi = 0x5c3820;
@@ -91,6 +91,8 @@ export function buildRuinsScene(scene: Scene): ArenaBuildResult {
         Math.random() * 0.3,
         false,
         wallBoxes,
+        1,
+        'prop',
       );
     }
   }
@@ -120,6 +122,8 @@ export function buildRuinsScene(scene: Scene): ArenaBuildResult {
         Math.random() * Math.PI,
         false,
         wallBoxes,
+        1,
+        'prop',
       );
     }
   }

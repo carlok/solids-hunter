@@ -5,6 +5,8 @@ import {
   UniversalCamera,
   Vector3,
 } from '@babylonjs/core';
+/** Side effect: patches Scene picking (`createPickingRay`, `pickWithRay`). Without this, treeshaking can drop Culling/ray and those methods throw `_WarnImport("Ray")`. */
+import '@babylonjs/core/Culling/ray';
 
 import { generateHuntRule } from '@lib/game-rules.js';
 import type { ArenaBuildResult } from './arena-shared';
@@ -24,7 +26,7 @@ import type { HuntRule } from './entities';
 import { disposeAllGameEntities, gameFeedback, spawnGameEntities, updateGameEntities } from './entity-motion';
 import { GameAudio } from './game-audio';
 import { attachBabylonShooting } from './shoot-input';
-import { hitsWall } from './wall-collision';
+import { hitsEntity, hitsWall } from './wall-collision';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement | null;
 if (!canvas) {
@@ -63,8 +65,8 @@ const scene = new Scene(engine);
   const ipc = scene.imageProcessingConfiguration;
   ipc.toneMappingEnabled = true;
   ipc.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
-  ipc.exposure = 1.05;
-  ipc.contrast = 1.06;
+  ipc.exposure = 1.16;
+  ipc.contrast = 1.04;
 }
 
 function syncCanvasToEngineSize(): void {
@@ -77,6 +79,9 @@ requestAnimationFrame(() => {
 
 const camera = new UniversalCamera('cam', new Vector3(0, 1.7, 0), scene);
 camera.attachControl(canvas, true);
+/** Keyboard walking is custom (constant speed). Built-in FreeCamera keyboard uses acceleration — stacks with arrows/WASD. */
+const kbInput = camera.inputs.attached.keyboard;
+if (kbInput) camera.inputs.remove(kbInput);
 camera.minZ = 0.05;
 camera.fov = (68 * Math.PI) / 180;
 const mouseInput = camera.inputs.attached.mouse as { angularSensibility?: number } | undefined;
@@ -452,14 +457,26 @@ engine.runRenderLoop(() => {
       mx = (mx / len) * MV * dt;
       mz = (mz / len) * MV * dt;
       GameAudio.maybeFootstep(dt, true);
-      const np = camera.position.clone();
-      np.x += mx;
-      np.z += mz;
-      np.y = 1.7;
-      np.x = Math.min(40, Math.max(-40, np.x));
-      np.z = Math.min(40, Math.max(-40, np.z));
-      if (!hitsWall(np, arena.wallBoxes)) {
-        camera.position.copyFrom(np);
+      const bound = 40;
+      const cur = camera.position;
+      const blocked = (p: Vector3) =>
+        hitsWall(p, arena.wallBoxes) || hitsEntity(p, entities);
+
+      const tryMove = (x: number, z: number): boolean => {
+        const p = new Vector3(x, 1.7, z);
+        p.x = Math.min(bound, Math.max(-bound, p.x));
+        p.z = Math.min(bound, Math.max(-bound, p.z));
+        if (blocked(p)) return false;
+        camera.position.copyFrom(p);
+        return true;
+      };
+
+      if (tryMove(cur.x + mx, cur.z + mz)) {
+        /* full step */
+      } else if (tryMove(cur.x + mx, cur.z)) {
+        /* slide along X */
+      } else {
+        tryMove(cur.x, cur.z + mz);
       }
     } else {
       GameAudio.maybeFootstep(dt, false);

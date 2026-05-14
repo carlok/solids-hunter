@@ -1,8 +1,10 @@
 import type { Scene, UniversalCamera } from '@babylonjs/core';
-import { Ray, Vector3 } from '@babylonjs/core';
+/** Ensures Scene picking is patched in this chunk (same as main.ts); avoids treeshook stubs that throw. */
+import '@babylonjs/core/Culling/ray';
 
 import {
   coachAppliesThisShot,
+  onHitMissAfterScoring,
   onHitWrongAfterScoring,
   scheduleEndRoundAfterCorrectCoach,
 } from './coach';
@@ -62,13 +64,17 @@ export function attachBabylonShooting(options: {
 
   updateHud(runtime, hud);
 
-  window.addEventListener('mousedown', (e: MouseEvent) => {
+  const onRoundEndMouseDown = (e: MouseEvent): void => {
+    if (e.button !== 0) return;
+    if (!runtime.roundEnded) return;
+    window.location.reload();
+  };
+  window.addEventListener('mousedown', onRoundEndMouseDown, true);
+
+  const onShootMouseDown = (e: MouseEvent): void => {
     if (e.button !== 0) return;
 
-    if (runtime.roundEnded) {
-      window.location.reload();
-      return;
-    }
+    if (runtime.roundEnded) return;
 
     if (gameFeedback.paused) return;
     if (document.pointerLockElement !== canvas) return;
@@ -77,11 +83,29 @@ export function attachBabylonShooting(options: {
 
     const entities = shootContext.getEntities();
 
-    const dir = camera.getDirection(new Vector3(0, 0, 1));
-    const muzzle = camera.position.clone().addScaledVector(dir, MUZZLE_FORWARD);
-    const traceFar = muzzle.clone().addScaledVector(dir, MAX_TRACE);
+    const engine = scene.getEngine();
+    const ray = scene.createPickingRay(
+      engine.getRenderWidth() * 0.5,
+      engine.getRenderHeight() * 0.5,
+      null,
+      camera,
+    );
+    ray.length = MAX_TRACE + MUZZLE_FORWARD + 4;
+    const dir = ray.direction.clone();
+    dir.normalize();
+    const muzzle = ray.origin.clone();
+    {
+      const forward = dir.clone();
+      forward.scale(MUZZLE_FORWARD);
+      muzzle.addInPlace(forward);
+    }
+    const traceFar = muzzle.clone();
+    {
+      const span = dir.clone();
+      span.scale(MAX_TRACE);
+      traceFar.addInPlace(span);
+    }
 
-    const ray = new Ray(camera.position.clone(), dir, MAX_TRACE + MUZZLE_FORWARD + 4);
     const pick = scene.pickWithRay(ray, (mesh) => {
       const id = resolveEntityIdFromPick(mesh);
       if (id === undefined) return false;
@@ -91,18 +115,28 @@ export function attachBabylonShooting(options: {
 
     let traceEnd = traceFar;
     let ent: GameEntity | null = null;
-    if (pick.hit && pick.pickedMesh && pick.pickedPoint) {
+    if (pick.hit && pick.pickedMesh) {
       const id = resolveEntityIdFromPick(pick.pickedMesh);
       const found = id === undefined ? undefined : entities.find((x) => x.entityId === id);
       if (found && found.alive && !found.dying) {
         ent = found;
-        traceEnd = pick.pickedPoint.clone();
+        if (pick.pickedPoint) {
+          traceEnd = pick.pickedPoint.clone();
+        } else {
+          const d =
+            typeof pick.distance === 'number' && pick.distance > 0 ? pick.distance : MAX_TRACE;
+          traceEnd = ray.origin.clone().add(dir.clone().scale(d));
+        }
       }
     }
 
     spawnShotTracer(scene, muzzle, traceEnd);
 
-    if (!ent) return;
+    if (!ent) {
+      const coachThis = coachAppliesThisShot(runtime.shotsThisRound);
+      onHitMissAfterScoring(coachThis);
+      return;
+    }
 
     const coachThis = coachAppliesThisShot(runtime.shotsThisRound);
     runtime.shotsThisRound++;
@@ -133,5 +167,8 @@ export function attachBabylonShooting(options: {
       updateHud(runtime, hud);
       onHitWrongAfterScoring(ent, coachThis);
     }
-  });
+  };
+
+  /** Capture so HUD/overlay does not eat the click; center-ray pick matches the crosshair under pointer lock. */
+  canvas.addEventListener('mousedown', onShootMouseDown, true);
 }

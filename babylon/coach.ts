@@ -192,6 +192,34 @@ function buildWrongCoachText(color: string, shape: string): string {
   return `${pickWrongIntro(color, shape)}\n\n${pickWrongBridge()}\n\n${pickWrongTask()}`;
 }
 
+function pickMissIntro(): string {
+  const pool = [
+    () => 'That shot didn’t tag a hunt solid.',
+    () => 'No target solid at the crosshair.',
+    () => 'Aim at a labeled shape in the arena.',
+    () => 'Miss — line up a solid and fire again.',
+  ];
+  const f = pool[copyPoolIdx % pool.length]!;
+  copyPoolIdx++;
+  return f();
+}
+
+function pickMissBridge(): string {
+  const pool = [
+    () => 'The crosshair has to land on one of the moving solids.',
+    () => 'Walls and empty space don’t count — pick a solid body.',
+    () => 'Wait for a solid under the reticle, then click.',
+    () => 'You need a clean hit on geometry that belongs to the hunt.',
+  ];
+  const f = pool[copyPoolIdx % pool.length]!;
+  copyPoolIdx++;
+  return f();
+}
+
+function buildMissCoachText(): string {
+  return `${pickMissIntro()}\n\n${pickMissBridge()}\n\n${pickWrongTask()}`;
+}
+
 function pickCorrectToast(color: string, shape: string): string {
   const pool = [
     `Locked in — ${color} ${shape}.`,
@@ -395,6 +423,44 @@ function beginWrongCoachModal(color: string, shape: string): void {
   });
 }
 
+function beginMissCoachVoiceOnly(): void {
+  const body = buildMissCoachText();
+  const parts = body.split('\n\n');
+  showHudToast((parts[0] || '') + ' — aim at a solid.', 2800);
+  const spoken = coachSpokenFromBody(body);
+  gameFeedback.paused = true;
+  if (wrongVoiceTimer) {
+    clearTimeout(wrongVoiceTimer);
+    wrongVoiceTimer = null;
+  }
+  speakCoachLine(spoken, () => {
+    gameFeedback.paused = false;
+  });
+}
+
+function beginMissCoachModal(): void {
+  const body = buildMissCoachText();
+  const hitFeedbackBody = el('hit-feedback-body');
+  if (hitFeedbackBody) hitFeedbackBody.textContent = body;
+  gameFeedback.paused = true;
+  const modalHitFeedback = el('modal-hit-feedback');
+  if (modalHitFeedback) modalHitFeedback.classList.remove('hidden');
+  const hitFeedbackOk = el<HTMLButtonElement>('hit-feedback-ok');
+  if (hitFeedbackOk) {
+    hitFeedbackOk.disabled = true;
+    hitFeedbackOk.setAttribute('aria-busy', 'true');
+  }
+  try {
+    document.exitPointerLock();
+  } catch {
+    /* ignore */
+  }
+  const spoken = coachSpokenFromBody(body);
+  speakCoachLine(spoken, () => {
+    enableHitFeedbackOkButton();
+  });
+}
+
 /** After the last correct hit, delay round end until coach speech ends (if any). */
 export function scheduleEndRoundAfterCorrectCoach(
   ent: GameEntity,
@@ -420,6 +486,14 @@ export function onHitWrongAfterScoring(ent: GameEntity, coachThis: boolean): voi
   const mode = getHitConfirmMode();
   if (mode === 'voice') beginWrongCoachVoiceOnly(ent.colorName, ent.shape);
   else if (mode === 'modal') beginWrongCoachModal(ent.colorName, ent.shape);
+}
+
+/** Miss / environment — no hunt entity resolved at crosshair (coach only, no score delta here). */
+export function onHitMissAfterScoring(coachThis: boolean): void {
+  if (!coachThis) return;
+  const mode = getHitConfirmMode();
+  if (mode === 'voice') beginMissCoachVoiceOnly();
+  else if (mode === 'modal') beginMissCoachModal();
 }
 
 /** Clear re-lock flag when pointer lock succeeds (Three `controls` lock). */

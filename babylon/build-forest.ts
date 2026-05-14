@@ -20,10 +20,11 @@ import {
   addWallBox,
   applyDiffuseHex,
   disposeArenaResources,
-  setBackgroundExp2FogCustom,
+  setAzureBackgroundExp2Fog,
   type ArenaBuildResult,
 } from './arena-shared';
 import { envTintHex } from './env-colors';
+import { styleSurfaceMaterial } from './material-style';
 import { pushWallBoxCenterSize, type WallAABB } from './wall-collision';
 
 export const FOREST_ENV_SPAWN_HALF_XZ = 40;
@@ -36,15 +37,14 @@ export function buildForestScene(scene: Scene): ArenaBuildResult {
   const wallBoxes: WallAABB[] = [];
   const envSpawnHalfXZ = FOREST_ENV_SPAWN_HALF_XZ;
 
-  /* Mist + sky aligned with foliage (cyan horizon was washing / shifting perceived neutrals). */
-  setBackgroundExp2FogCustom(scene, 0x6a8f82, 0xa0c4b5, 0.0082);
+  setAzureBackgroundExp2Fog(scene, 0.0055);
 
-  addHemisphericFillSplit(scene, lights, 0xd2e8dd, 0x283028, 0.48);
-  addDirFromPosition(scene, lights, 0xc4ebd4, 0.52, 5, 15, 5);
-  addPoint(scene, lights, 0x8cbea0, 0.52, 0, 6, 0, 65);
-  addPoint(scene, lights, 0x7aab8c, 0.34, 16, 5, -16, 38);
+  addHemisphericFillSplit(scene, lights, 0xb8e6ff, 0x4a6b52, 0.62);
+  addDirFromPosition(scene, lights, 0xe8f8ee, 0.58, 5, 18, 5);
+  addPoint(scene, lights, 0xb8e8c8, 0.55, 0, 7, 0, 72);
+  addPoint(scene, lights, 0x9dd4b0, 0.4, 16, 6, -16, 42);
 
-  addFloor(scene, meshes, 90, 0x132618);
+  addFloor(scene, meshes, 90, 0x2d4a38, 'forest');
 
   const fWallLo = 0x1a3020;
   const fWallHi = 0x3e6048;
@@ -87,8 +87,8 @@ export function buildForestScene(scene: Scene): ArenaBuildResult {
     );
     trunk.position.set(x, h / 2, z);
     const tmat = new StandardMaterial(`tmat_${x}_${z}`, scene);
-    tmat.specularColor = Color3.Black();
     applyDiffuseHex(tmat, envTintHex(0x2a1007, trunkSalt));
+    styleSurfaceMaterial(tmat, 'trunk');
     trunk.material = tmat;
     meshes.push(trunk);
     pushWallBoxCenterSize(wallBoxes, x, h / 2, z, rb * 2, h, rb * 2);
@@ -105,8 +105,8 @@ export function buildForestScene(scene: Scene): ArenaBuildResult {
       );
       canopy.position.set(x, h - 0.5 + off + coneH / 2, z);
       const cmat = new StandardMaterial(`cmat_${x}_${z}_${i}`, scene);
-      cmat.specularColor = Color3.Black();
-      applyDiffuseHex(cmat, envTintHex(0x0e2e0e, leafSalt));
+      applyDiffuseHex(cmat, envTintHex(0x2e6b2e, leafSalt));
+      styleSurfaceMaterial(cmat, 'canopy');
       canopy.material = cmat;
       meshes.push(canopy);
     }

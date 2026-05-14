@@ -24,6 +24,7 @@ import {
   type ArenaBuildResult,
 } from './arena-shared';
 import { envTintHex } from './env-colors';
+import { styleSurfaceMaterial } from './material-style';
 import { pushWallBoxCenterSize, type WallAABB } from './wall-collision';
 
 /** Matches `buildEnv('lab')` → `envSpawnHalfXZ` in js/main.js */
@@ -39,21 +40,21 @@ export function buildLabScene(scene: Scene): ArenaBuildResult {
   const wallBoxes: WallAABB[] = [];
   const envSpawnHalfXZ = LAB_ENV_SPAWN_HALF_XZ;
 
-  setAzureBackgroundLinearFog(scene, 22, 92);
+  setAzureBackgroundLinearFog(scene, 36, 118);
 
-  addAmbientFill(scene, lights, 0xb8d4f0, 0.52);
+  addAmbientFill(scene, lights, 0xd2e8fc, 0.64);
   addPoint(scene, lights, 0x55eeff, 1.25, 0, 5, 0, 58);
   addPoint(scene, lights, 0xffffff, 0.55, 15, 4, 15, 32);
   addPoint(scene, lights, 0xffffff, 0.55, -15, 4, -15, 32);
 
-  addFloor(scene, meshes, 65, 0x1a2235);
+  addFloor(scene, meshes, 65, 0x3a4a5e, 'lab');
 
   const ceil = MeshBuilder.CreatePlane('ceil', { width: 65, height: 65 }, scene);
   ceil.rotation.x = Math.PI / 2;
   ceil.position.y = 6.5;
   const ceilMat = new StandardMaterial('ceilMat', scene);
-  ceilMat.specularColor = Color3.Black();
-  applyDiffuseHex(ceilMat, envTintHex(0x3a4d68, 19));
+  applyDiffuseHex(ceilMat, envTintHex(0x456080, 19));
+  styleSurfaceMaterial(ceilMat, 'ceiling');
   ceil.material = ceilMat;
   meshes.push(ceil);
 
@@ -63,7 +64,7 @@ export function buildLabScene(scene: Scene): ArenaBuildResult {
     applyDiffuseHex(lineMat, 0x18183a);
     const gl1 = MeshBuilder.CreatePlane('gl1', { width: 60, height: 0.055 }, scene);
     gl1.rotation.x = Math.PI / 2;
-    gl1.position.set(0, 0.01, i);
+    gl1.position.set(0, 0.088, i);
     gl1.material = lineMat;
     meshes.push(gl1);
 
@@ -72,7 +73,7 @@ export function buildLabScene(scene: Scene): ArenaBuildResult {
     applyDiffuseHex(lineMat2, 0x18183a);
     const gl2 = MeshBuilder.CreatePlane('gl2', { width: 0.055, height: 60 }, scene);
     gl2.rotation.x = Math.PI / 2;
-    gl2.position.set(i, 0.01, 0);
+    gl2.position.set(i, 0.088, 0);
     gl2.material = lineMat2;
     meshes.push(gl2);
   }
@@ -95,8 +96,8 @@ export function buildLabScene(scene: Scene): ArenaBuildResult {
     const mesh = MeshBuilder.CreateBox(`panel_${x}_${z}`, { width: w, height: h, depth: d }, scene);
     mesh.position.set(x, y, z);
     const pm = new StandardMaterial(`pm_${x}_${z}`, scene);
-    pm.specularColor = Color3.Black();
     applyDiffuseHex(pm, envTintHex(0x4a6a8a, panelSalt));
+    styleSurfaceMaterial(pm, 'glass');
     mesh.material = pm;
     meshes.push(mesh);
     pushWallBoxCenterSize(wallBoxes, x, y, z, w, h, d);
@@ -126,6 +127,8 @@ export function buildLabScene(scene: Scene): ArenaBuildResult {
       0,
       false,
       wallBoxes,
+      1,
+      'prop',
     );
   });
 

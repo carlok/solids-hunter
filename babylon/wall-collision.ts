@@ -52,6 +52,28 @@ export function hitsWall(pos: Vector3, wallBoxes: readonly WallAABB[]): boolean 
   return false;
 }
 
+/** Solid block roughly over hunt entity body+outline (XZ); center Y matches moving solids. */
+const ENTITY_PLAYER_BLOCK = new Vector3(1.05, 1.05, 1.05);
+const ENTITY_PLAYER_CENTER_Y = 1.45;
+
+export type EntityCollider = {
+  root: { position: Vector3 };
+  alive: boolean;
+  dying: boolean;
+};
+
+export function hitsEntity(pos: Vector3, entities: readonly EntityCollider[]): boolean {
+  aabbFromCenterAndSize(pos, PLAYER_SIZE, _pMin, _pMax);
+  for (const e of entities) {
+    if (!e.alive || e.dying) continue;
+    const m = e.root.position;
+    _try.set(m.x, ENTITY_PLAYER_CENTER_Y, m.z);
+    aabbFromCenterAndSize(_try, ENTITY_PLAYER_BLOCK, _eMin, _eMax);
+    if (intersectsAABB(_playerBox, _entBox)) return true;
+  }
+  return false;
+}
+
 export function entityHitsWallAt(
   pos: Vector3,
   wallBoxes: readonly WallAABB[],

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   aabbFromCenterAndSize,
   entityHitsWallAt,
+  hitsEntity,
   hitsWall,
   intersectsAABB,
   pushWallBoxCenterSize,
@@ -53,6 +54,37 @@ describe('hitsWall', () => {
     pushWallBoxCenterSize(wallBoxes, 32, 3.5, 0, 0.5, 7, 65);
     const spawn = new Vector3(0, 1.7, 0);
     expect(hitsWall(spawn, wallBoxes)).toBe(false);
+  });
+});
+
+describe('hitsEntity', () => {
+  it('returns true when player AABB overlaps a living entity block', () => {
+    const ents = [
+      {
+        root: { position: new Vector3(10, 0, 0) },
+        alive: true,
+        dying: false,
+      },
+    ];
+    expect(hitsEntity(new Vector3(10, 1.7, 0), ents)).toBe(true);
+    expect(hitsEntity(new Vector3(0, 1.7, 0), ents)).toBe(false);
+  });
+
+  it('ignores dead or dying entities', () => {
+    const ents = [
+      {
+        root: { position: new Vector3(5, 0, 0) },
+        alive: false,
+        dying: false,
+      },
+      {
+        root: { position: new Vector3(8, 0, 0) },
+        alive: true,
+        dying: true,
+      },
+    ];
+    expect(hitsEntity(new Vector3(5, 1.7, 0), ents)).toBe(false);
+    expect(hitsEntity(new Vector3(8, 1.7, 0), ents)).toBe(false);
   });
 });
 

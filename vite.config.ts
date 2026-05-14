@@ -3,7 +3,7 @@ import type { Plugin } from 'vite';
 import { resolve } from 'node:path';
 import fs from 'node:fs';
 
-Serve /assets/* from repo-root assets/ for WAV dev.
+/** Serve `/assets/*` from repo-root `assets/` for WAV dev. */
 function rootAssetsPlugin(): Plugin {
   const assetsRoot = resolve(__dirname, 'assets');
   return {
@@ -50,6 +50,11 @@ export default defineConfig({
     alias: {
       '@lib': resolve(__dirname, 'lib'),
     },
+    /** One physical copy of Babylon so `import '@babylonjs/core/Culling/ray'` patches the same `Scene` as `new Scene()`. */
+    dedupe: ['@babylonjs/core'],
+  },
+  optimizeDeps: {
+    include: ['@babylonjs/core', '@babylonjs/core/Culling/ray'],
   },
   server: {
     fs: { allow: ['.'] },

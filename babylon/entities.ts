@@ -11,6 +11,8 @@ import {
 
 import { COLORS, generateHuntRule, SHAPES } from '@lib/game-rules.js';
 
+import { styleSurfaceMaterial } from './material-style';
+
 export { resolveEntityIdFromChain, resolveEntityIdFromPick } from './entity-pick';
 
 const outlineMatByScene = new WeakMap<Scene, StandardMaterial>();
@@ -130,6 +132,7 @@ export function createSolidEntity(
   rgbToColor3(colorHex, mat.diffuseColor);
   mat.emissiveColor.copyFrom(mat.diffuseColor);
   mat.emissiveColor.scaleInPlace(0.14);
+  styleSurfaceMaterial(mat, 'huntSolid');
   body.material = mat;
   body.parent = root;
 

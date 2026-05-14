@@ -432,7 +432,7 @@ if (qEnv) {
 
 syncTopNav();
 syncSoundToggles();
-void GameAudio.load().catch(() => {});
+void GameAudio.load().catch(() => { });
 
 engine.runRenderLoop(() => {
   const dt = Math.min(engine.getDeltaTime() / 1000, 0.05);
@@ -500,7 +500,7 @@ engine.runRenderLoop(() => {
 
   if (arena) {
     updateGameEntities({
-      entities,
+      entities: entities.filter(e => e.alive && e.body && !e.body.isDisposed()),
       wallBoxes: arena.wallBoxes,
       envSpawnHalfXZ: arena.envSpawnHalfXZ,
       feedbackPaused: gameFeedback.paused,

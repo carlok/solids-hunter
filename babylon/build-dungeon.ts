@@ -6,6 +6,8 @@ import {
   PBRMaterial,
   Scene,
   Vector3,
+  Color4,
+  Color3,
 } from '@babylonjs/core';
 
 import {
@@ -13,12 +15,10 @@ import {
   addBox,
   addFloor,
   addPoint,
-  addSkySphere,
-  addSunLight,
+  addDustMotes,
   addWallBox,
   applyAlbedoHex,
   makeArenaBuildResult,
-  setAzureBackgroundLinearFog,
   type ArenaBuildResult,
 } from './arena-shared';
 import { envTintHex, propColorDrift } from './env-colors';
@@ -35,12 +35,20 @@ export function buildDungeonScene(scene: Scene): ArenaBuildResult {
   const wallBoxes: WallAABB[] = [];
   const envSpawnHalfXZ = DUNGEON_ENV_SPAWN_HALF_XZ;
 
-  setAzureBackgroundLinearFog(scene, 32, 128);
+  scene.clearColor = new Color4(0.02, 0.02, 0.02, 1);
+  scene.fogMode = Scene.FOGMODE_LINEAR;
+  scene.fogStart = 10;
+  scene.fogEnd = 45;
+  scene.fogColor = new Color3(0.02, 0.02, 0.02);
 
-  addAmbientFill(scene, lights, 0xe8d8c8, 0.66);
-  addPoint(scene, lights, 0xffc8a8, 1.45, 0, 3.5, 0, 48);
-  addPoint(scene, lights, 0xffaa88, 1.0, 13, 3, -13, 28);
-  addPoint(scene, lights, 0xffaa88, 1.0, -13, 3, 13, 28);
+  addAmbientFill(scene, lights, 0x101010, 0.15); // Very low ambient
+  addPoint(scene, lights, 0xff5500, 1.8, 0, 0.5, 0, 40); // Central bonfire
+  
+  // Torches on walls
+  addPoint(scene, lights, 0xff8800, 1.2, -34, 3, 0, 30);
+  addPoint(scene, lights, 0xff8800, 1.2, 34, 3, 0, 30);
+  addPoint(scene, lights, 0xff8800, 1.2, 0, 3, -34, 30);
+  addPoint(scene, lights, 0xff8800, 1.2, 0, 3, 34, 30);
 
   addFloor(scene, meshes, 70, 0x2a2218, 'dungeon');
 
@@ -49,16 +57,40 @@ export function buildDungeonScene(scene: Scene): ArenaBuildResult {
   ceil.position.y = 5.5;
   const ceilMat = new PBRMaterial('dungeonCeilMat', scene);
   applyAlbedoHex(ceilMat, envTintHex(0x302018, 11));
-  stylePbrSurfaceMaterial(ceilMat, 'ceiling');
+  stylePbrSurfaceMaterial(ceilMat, 'stone');
   ceil.material = ceilMat;
   meshes.push(ceil);
 
   const dOutLo = 0x283648;
   const dOutHi = 0x446080;
-  addWallBox(scene, meshes, wallBoxes, 70, 6, 1, dOutLo, dOutHi, 0, 3, -35, 0);
-  addWallBox(scene, meshes, wallBoxes, 70, 6, 1, dOutLo, dOutHi, 0, 3, 35, 0);
-  addWallBox(scene, meshes, wallBoxes, 1, 6, 70, dOutLo, dOutHi, -35, 3, 0, 0);
-  addWallBox(scene, meshes, wallBoxes, 1, 6, 70, dOutLo, dOutHi, 35, 3, 0, 0);
+  
+  // Break outer walls into segments with slight jitter and varying heights
+  for (let i = -30; i <= 30; i += 15) {
+    const h1 = 4 + Math.random() * 5;
+    const h2 = 4 + Math.random() * 5;
+    const h3 = 4 + Math.random() * 5;
+    const h4 = 4 + Math.random() * 5;
+    const ry1 = (Math.random() - 0.5) * 0.1;
+    const ry2 = (Math.random() - 0.5) * 0.1;
+    const ry3 = (Math.random() - 0.5) * 0.1;
+    const ry4 = (Math.random() - 0.5) * 0.1;
+    addWallBox(scene, meshes, wallBoxes, 16, h1, 1.5, dOutLo, dOutHi, i, h1 / 2, -35, ry1);
+    addWallBox(scene, meshes, wallBoxes, 16, h2, 1.5, dOutLo, dOutHi, i, h2 / 2, 35, ry2);
+    addWallBox(scene, meshes, wallBoxes, 1.5, h3, 16, dOutLo, dOutHi, -35, h3 / 2, i, ry3);
+    addWallBox(scene, meshes, wallBoxes, 1.5, h4, 16, dOutLo, dOutHi, 35, h4 / 2, i, ry4);
+  }
+
+  // Make the lights flicker (Bonfire & Torches)
+  const baseIntensities = lights.map(l => l.intensity);
+  let time = 0;
+  scene.onBeforeRenderObservable.add(() => {
+    time += scene.getEngine().getDeltaTime() * 0.005;
+    lights.forEach((l, idx) => {
+      // Small random sin wave variation for flicker
+      const flicker = Math.sin(time * (1 + idx)) * 0.15 * Math.random();
+      l.intensity = baseIntensities[idx]! + flicker;
+    });
+  });
 
   const dInLo = 0x303e52;
   const dInHi = 0x4a6080;
@@ -111,8 +143,9 @@ export function buildDungeonScene(scene: Scene): ArenaBuildResult {
     );
   }
 
-  addSkySphere(scene, meshes, textures);
-  addSunLight(scene, lights);
+  addDustMotes(scene, meshes);
+
+  // No sky sphere, no sun light for dark dungeon
 
   const spawnPosition = new Vector3(6, 1.7, 8);
 

@@ -7,6 +7,7 @@ import {
   PBRMaterial,
   PointLight,
   Scene,
+  SpotLight,
   StandardMaterial,
   Vector3,
 } from '@babylonjs/core';
@@ -14,6 +15,7 @@ import {
 import {
   addAmbientFill,
   addBox,
+  addDustMotes,
   addFloor,
   addPoint,
   addSkySphere,
@@ -44,10 +46,20 @@ export function buildLabScene(scene: Scene): ArenaBuildResult {
 
   setAzureBackgroundLinearFog(scene, 36, 118);
 
-  addAmbientFill(scene, lights, 0xd2e8fc, 0.64);
-  addPoint(scene, lights, 0x55eeff, 1.25, 0, 5, 0, 58);
-  addPoint(scene, lights, 0xffffff, 0.55, 15, 4, 15, 32);
-  addPoint(scene, lights, 0xffffff, 0.55, -15, 4, -15, 32);
+  addAmbientFill(scene, lights, 0xd2e8fc, 0.3); // Softer ambient
+  addPoint(scene, lights, 0x55eeff, 1.0, 0, 6, 0, 60); // Central chandelier
+
+  // Spot lights
+  const addSpot = (x: number, z: number) => {
+    const spot = new SpotLight(`spot_${x}_${z}`, new Vector3(x, 6, z), new Vector3(0, -1, 0), Math.PI / 3, 2, scene);
+    spot.diffuse = new Color3(1, 1, 1);
+    spot.intensity = 0.8;
+    lights.push(spot);
+  };
+  addSpot(15, 15);
+  addSpot(-15, -15);
+  addSpot(15, -15);
+  addSpot(-15, 15);
 
   addFloor(scene, meshes, 65, 0x3a4a5e, 'lab');
 
@@ -159,6 +171,8 @@ export function buildLabScene(scene: Scene): ArenaBuildResult {
 
   addSkySphere(scene, meshes, textures);
   addSunLight(scene, lights);
+
+  addDustMotes(scene, meshes);
 
   const spawnPosition = new Vector3(0, 1.7, 0);
 

@@ -5,6 +5,7 @@ import {
   DirectionalLight,
   DynamicTexture,
   HemisphericLight,
+  InstancedMesh,
   Light,
   Mesh,
   MeshBuilder,
@@ -15,6 +16,7 @@ import {
   StandardMaterial,
   Texture,
   Vector3,
+  VertexBuffer,
 } from '@babylonjs/core';
 
 import { envTintHex, wallColorInPalette } from './env-colors';
@@ -62,6 +64,27 @@ export function applyDiffuseHex(mat: StandardMaterial, rgb: number): void {
 
 export function applyAlbedoHex(mat: PBRMaterial, rgb: number): void {
   rgbToColor3(rgb, mat.albedoColor);
+}
+
+export function applyRandomVertexGradient(mesh: Mesh, colorRgb: number, driftRange = 0.4): void {
+  const positions = mesh.getVerticesData(VertexBuffer.PositionKind);
+  if (!positions) return;
+  const vColors = [];
+  const cr = ((colorRgb >> 16) & 0xff) / 255;
+  const cg = ((colorRgb >> 8) & 0xff) / 255;
+  const cb = (colorRgb & 0xff) / 255;
+  for (let i = 0; i < positions.length / 3; i++) {
+    const shift = (Math.random() - 0.5) * driftRange;
+    vColors.push(Math.max(0, Math.min(1, cr + shift)));
+    vColors.push(Math.max(0, Math.min(1, cg + shift)));
+    vColors.push(Math.max(0, Math.min(1, cb + shift)));
+    vColors.push(1);
+  }
+  mesh.setVerticesData(VertexBuffer.ColorKind, vColors);
+  
+  if (mesh.material && 'albedoColor' in mesh.material) {
+    (mesh.material as PBRMaterial).albedoColor = Color3.White();
+  }
 }
 
 function getOrCreateSkyGradientTexture(
@@ -240,6 +263,10 @@ export function addBox(
     mat.transparencyMode = PBRMaterial.PBRMATERIAL_ALPHABLEND;
   }
   applyAlbedoHex(mat, color);
+
+  mesh.material = mat;
+  applyRandomVertexGradient(mesh, color);
+
   if (isWall) {
     stylePbrSurfaceMaterial(mat, 'wall');
   } else if (surfaceHint !== 'none') {
@@ -248,6 +275,59 @@ export function addBox(
   mesh.material = mat;
   meshes.push(mesh);
   if (isWall) pushWallBoxCenterSize(wallBoxes, x, y, z, w, h, d);
+  return mesh;
+}
+
+export function addFloorPropCylinder(
+  scene: Scene,
+  meshes: Mesh[],
+  radius: number,
+  height: number,
+  color: number,
+  x: number,
+  y: number,
+  z: number,
+  surfaceHint: MaterialSurfaceRole = 'prop'
+): Mesh {
+  const mesh = MeshBuilder.CreateCylinder(
+    `envCyl_${meshes.length}`,
+    { height, diameter: radius * 2, tessellation: 16 },
+    scene
+  );
+  mesh.position.set(x, y, z);
+  const mat = new PBRMaterial(`mCyl_${meshes.length}`, scene);
+  applyAlbedoHex(mat, color);
+  stylePbrSurfaceMaterial(mat, surfaceHint);
+  mesh.material = mat;
+  applyRandomVertexGradient(mesh, color);
+  meshes.push(mesh);
+  return mesh;
+}
+
+export function addBoxRotated(
+  scene: Scene,
+  meshes: Mesh[],
+  w: number,
+  h: number,
+  d: number,
+  color: number,
+  x: number,
+  y: number,
+  z: number,
+  rx: number,
+  ry: number,
+  rz: number,
+  surfaceHint: MaterialSurfaceRole = 'prop'
+): Mesh {
+  const mesh = MeshBuilder.CreateBox(`envRot_${meshes.length}`, { width: w, height: h, depth: d }, scene);
+  mesh.position.set(x, y, z);
+  mesh.rotation.set(rx, ry, rz);
+  const mat = new PBRMaterial(`mRot_${meshes.length}`, scene);
+  applyAlbedoHex(mat, color);
+  stylePbrSurfaceMaterial(mat, surfaceHint);
+  mesh.material = mat;
+  applyRandomVertexGradient(mesh, color);
+  meshes.push(mesh);
   return mesh;
 }
 
@@ -294,6 +374,7 @@ export function addWallBoxRotY(
   applyAlbedoHex(mat, col);
   stylePbrSurfaceMaterial(mat, 'wall');
   mesh.material = mat;
+  applyRandomVertexGradient(mesh, col);
   meshes.push(mesh);
   pushWallBoxCenterSizeRotY(wallBoxes, x, y, z, w, h, d, ry);
 }
@@ -317,16 +398,24 @@ export function addFloor(
   baseColor: number,
   style: ArenaFloorStyle = 'lab',
 ): void {
-  const base = liftRgb(baseColor, 0.32);
+  // To keep contrast with sky, we do not lift RGB anymore. We use baseColor directly.
+  const base = baseColor;
   const main = MeshBuilder.CreateGround(
     `floor_${meshes.length}`,
-    { width: size, height: size, subdivisions: 6 },
+    { width: size, height: size, subdivisions: 24 },
     scene,
   );
   const mat = new PBRMaterial(`floorMat_${meshes.length}`, scene);
   applyAlbedoHex(mat, base);
-  stylePbrSurfaceMaterial(mat, 'floorMain');
+  const roleMap: Record<ArenaFloorStyle, MaterialSurfaceRole> = {
+    lab: 'tiles',
+    dungeon: 'bricks',
+    forest: 'grass',
+    ruins: 'sand'
+  };
+  stylePbrSurfaceMaterial(mat, roleMap[style] || 'floorMain');
   main.material = mat;
+  applyRandomVertexGradient(main, base);
   meshes.push(main);
 
   const seed = (baseColor ^ Math.imul(size, 73856093) ^ style.charCodeAt(0) * 131) >>> 0;
@@ -434,6 +523,55 @@ export function addFloor(
       'prop',
     );
   }
+
+  // Coins / Short Cylinders
+  const coinN = 12 + Math.floor(rnd() * 12);
+  for (let i = 0; i < coinN; i++) {
+    const radius = 0.5 + rnd() * 1.5;
+    const height = 0.05 + rnd() * 0.15;
+    const halfS = size * 0.5 - margin - 1;
+    const x = (rnd() * 2 - 1) * halfS;
+    const z = (rnd() * 2 - 1) * halfS;
+    const col = patchColors[Math.floor(rnd() * patchColors.length)]!;
+    addFloorPropCylinder(
+      scene,
+      meshes,
+      radius,
+      height,
+      envTintHex(col, x * 107 + z * 79 + i * 37),
+      x,
+      height * 0.5,
+      z,
+      'floorPatch'
+    );
+  }
+
+  // Ramps / Steps / Tilted objects
+  const rampN = 10 + Math.floor(rnd() * 10);
+  for (let i = 0; i < rampN; i++) {
+    const w = 1.0 + rnd() * 2.5;
+    const d = 1.0 + rnd() * 2.5;
+    const h = 0.2 + rnd() * 0.8;
+    const halfS = size * 0.5 - margin - 1;
+    const x = (rnd() * 2 - 1) * halfS;
+    const z = (rnd() * 2 - 1) * halfS;
+    const col = patchColors[Math.floor(rnd() * patchColors.length)]!;
+    addBoxRotated(
+      scene,
+      meshes,
+      w,
+      h,
+      d,
+      envTintHex(col, x * 113 + z * 83 + i * 41),
+      x,
+      h * 0.5,
+      z,
+      (rnd() - 0.5) * 0.4, // rx tilt
+      rnd() * Math.PI * 2, // ry
+      (rnd() - 0.5) * 0.4, // rz tilt
+      'prop'
+    );
+  }
 }
 
 /** Sky gradient sphere + shared with Three `addSkySphere`. */
@@ -505,6 +643,69 @@ export function addSoftClouds(
     plane.renderingGroupId = 0;
     meshes.push(plane);
   }
+}
+
+export function addDustMotes(scene: Scene, meshes: Mesh[]): void {
+  const count = 300;
+  
+  // We create 5 different colored base meshes for the dust to not look like uniform snow
+  const bases: Mesh[] = [];
+  for (let b = 0; b < 5; b++) {
+    const dustBase = MeshBuilder.CreateBox(`dustBase_${b}`, { size: 0.025 }, scene);
+    const mat = new PBRMaterial(`dustMat_${b}`, scene);
+    mat.emissiveColor = new Color3(Math.random(), Math.random(), Math.random());
+    mat.alpha = 0.6;
+    mat.disableLighting = true;
+    dustBase.material = mat;
+    dustBase.isVisible = false;
+    meshes.push(dustBase);
+    bases.push(dustBase);
+  }
+  
+  const instances: InstancedMesh[] = [];
+  const startOffsets: number[] = [];
+  
+  for (let i = 0; i < count; i++) {
+    const dustBase = bases[i % bases.length]!;
+    const inst = dustBase.createInstance(`dust_${i}`);
+    inst.position.set(
+      (Math.random() - 0.5) * 80,
+      Math.random() * 20,
+      (Math.random() - 0.5) * 80
+    );
+    inst.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+    instances.push(inst);
+    startOffsets.push(Math.random() * Math.PI * 2);
+  }
+  
+  let time = 0;
+  const obs = scene.onBeforeRenderObservable.add(() => {
+    time += scene.getEngine().getDeltaTime() * 0.001;
+    for (let i = 0; i < count; i++) {
+      const inst = instances[i]!;
+      const offset = startOffsets[i]!;
+      
+      // Swirling Brownian-like motion instead of straight falling
+      inst.position.x += Math.sin(time + offset) * 0.01;
+      inst.position.y += Math.cos(time * 0.8 + offset) * 0.005;
+      inst.position.z += Math.sin(time * 1.2 + offset) * 0.01;
+      
+      inst.rotation.x += 0.01;
+      inst.rotation.y += 0.02;
+      
+      // Wrap around
+      if (inst.position.y < 0) inst.position.y = 20;
+      if (inst.position.y > 20) inst.position.y = 0;
+      if (inst.position.x > 40) inst.position.x = -40;
+      if (inst.position.x < -40) inst.position.x = 40;
+      if (inst.position.z > 40) inst.position.z = -40;
+      if (inst.position.z < -40) inst.position.z = 40;
+    }
+  });
+
+  bases[0]!.onDisposeObservable.add(() => {
+    scene.onBeforeRenderObservable.remove(obs);
+  });
 }
 
 export function disposeArenaResources(

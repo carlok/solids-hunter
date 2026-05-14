@@ -1,5 +1,5 @@
 import type { Scene } from '@babylonjs/core';
-import { StandardMaterial, Vector3 } from '@babylonjs/core';
+import { Vector3 } from '@babylonjs/core';
 
 import { xzOverlapSeparation } from '@lib/entity-collision-2d.js';
 import {
@@ -47,6 +47,9 @@ export type GameEntity = SolidEntityRecord & {
   orbitSpeed: number;
   slideVx: number;
   slideVz: number;
+  rotVx: number;
+  rotVy: number;
+  rotVz: number;
 };
 
 export type SpawnGameOptions = {
@@ -126,6 +129,9 @@ export function spawnGameEntities(scene: Scene, opts: SpawnGameOptions): GameEnt
       orbitSpeed: 0,
       slideVx: 0,
       slideVz: 0,
+      rotVx: (rng() - 0.5) * 2.5,
+      rotVy: (rng() - 0.5) * 2.5,
+      rotVz: (rng() - 0.5) * 2.5,
     };
 
     if (moveMode === 'drift') {
@@ -179,7 +185,6 @@ export function updateGameEntities(params: {
   cameraWorldPosition: Vector3;
   dt: number;
   t: number;
-  labelShowDistance?: number;
 }): void {
   const {
     entities,
@@ -189,7 +194,6 @@ export function updateGameEntities(params: {
     cameraWorldPosition,
     dt,
     t,
-    labelShowDistance = 20,
   } = params;
 
   if (freeze) return;
@@ -198,14 +202,13 @@ export function updateGameEntities(params: {
 
   for (const ent of entities) {
     if (!ent.alive) continue;
+    if (!ent.body || ent.body.isDisposed()) continue; // guard disposed meshes
     const m = ent.root.position;
-    const labelMat = ent.label.material as StandardMaterial;
 
     if (ent.dying) {
       ent.dyingT += dt * 4;
       const s = Math.max(0, 1 - ent.dyingT);
-      ent.body.scaling.setAll(s);
-      labelMat.alpha = s;
+      if (!ent.body.isDisposed()) ent.body.scaling.setAll(s);
       if (ent.dyingT >= 1) {
         ent.alive = false;
         disposeSolidEntity(ent);
@@ -218,7 +221,9 @@ export function updateGameEntities(params: {
       m.x = ent.orbitCx + Math.cos(ent.orbitAng) * ent.orbitR;
       m.z = ent.orbitCz + Math.sin(ent.orbitAng) * ent.orbitR;
       m.y = 1.45 + Math.sin(t * 2.3 + ent.bobPhase) * 0.14;
-      ent.body.rotation.y += dt * 0.95;
+      ent.body.rotation.x += dt * ent.rotVx;
+      ent.body.rotation.y += dt * ent.rotVy;
+      ent.body.rotation.z += dt * ent.rotVz;
       let guard = 0;
       while (entityHitsWallAt(m, wallBoxes) && guard++ < 16) {
         ent.orbitR *= 0.93;
@@ -267,11 +272,15 @@ export function updateGameEntities(params: {
         ent.slideVz *= -1;
         m.z = clampN(m.z, -entXZLim, entXZLim);
       }
-      ent.body.rotation.y += dt * 0.4;
+      ent.body.rotation.x += dt * ent.rotVx;
+      ent.body.rotation.y += dt * ent.rotVy;
+      ent.body.rotation.z += dt * ent.rotVz;
     } else {
       const amp = ent.moveMode === 'bounce' ? ent.bobAmp : 0.2;
       m.y = 1.45 + Math.sin(t * ent.bobFreq + ent.bobPhase) * amp;
-      ent.body.rotation.y += dt * (ent.moveMode === 'bounce' ? 0.75 : 0.55);
+      ent.body.rotation.x += dt * ent.rotVx;
+      ent.body.rotation.y += dt * ent.rotVy;
+      ent.body.rotation.z += dt * ent.rotVz;
 
       ent.targetTimer -= dt;
       if (ent.targetTimer <= 0) {
@@ -383,13 +392,5 @@ export function updateGameEntities(params: {
     separateEntityFromWalls(m, wallBoxes);
     m.x = clampN(m.x, -entXZLim, entXZLim);
     m.z = clampN(m.z, -entXZLim, entXZLim);
-  }
-
-  for (const ent of entities) {
-    if (!ent.alive) continue;
-    const m = ent.root.position;
-    if (!ent.dying) {
-      ent.label.isVisible = Vector3.Distance(cameraWorldPosition, m) < labelShowDistance;
-    }
   }
 }

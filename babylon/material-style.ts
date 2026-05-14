@@ -15,7 +15,13 @@ export type MaterialSurfaceRole =
   | 'metal'
   | 'stone'
   | 'wood'
-  | 'ceramic';
+  | 'ceramic'
+  | 'tiles'
+  | 'bricks'
+  | 'grass'
+  | 'earth'
+  | 'sand'
+  | 'water';
 
 export function styleSurfaceMaterial(mat: StandardMaterial, role: MaterialSurfaceRole): void {
   mat.ambientColor.copyFrom(mat.diffuseColor);
@@ -87,6 +93,37 @@ export function styleSurfaceMaterial(mat: StandardMaterial, role: MaterialSurfac
       mat.specularColor = Color3.FromInts(48, 50, 54);
       mat.specularPower = 58;
       break;
+    case 'tiles':
+      mat.ambientColor.scaleInPlace(0.22);
+      mat.specularColor = Color3.FromInts(40, 42, 45);
+      mat.specularPower = 64;
+      break;
+    case 'bricks':
+      mat.ambientColor.scaleInPlace(0.28);
+      mat.specularColor = Color3.FromInts(24, 22, 20);
+      mat.specularPower = 16;
+      break;
+    case 'grass':
+      mat.ambientColor.scaleInPlace(0.35);
+      mat.specularColor = Color3.FromInts(15, 20, 15);
+      mat.specularPower = 8;
+      break;
+    case 'earth':
+      mat.ambientColor.scaleInPlace(0.3);
+      mat.specularColor = Color3.FromInts(20, 18, 16);
+      mat.specularPower = 10;
+      break;
+    case 'sand':
+      mat.ambientColor.scaleInPlace(0.4);
+      mat.specularColor = Color3.FromInts(30, 28, 25);
+      mat.specularPower = 12;
+      break;
+    case 'water':
+      mat.ambientColor.scaleInPlace(0.1);
+      mat.specularColor = Color3.FromInts(180, 200, 220);
+      mat.specularPower = 128;
+      mat.alpha = 0.8;
+      break;
     default:
       break;
   }
@@ -149,6 +186,31 @@ export function stylePbrSurfaceMaterial(mat: PBRMaterial, role: MaterialSurfaceR
     case 'ceramic':
       mat.metallic = 0.04;
       mat.roughness = 0.37;
+      break;
+    case 'tiles':
+      mat.metallic = 0.05;
+      mat.roughness = 0.25;
+      break;
+    case 'bricks':
+      mat.metallic = 0.02;
+      mat.roughness = 0.85;
+      break;
+    case 'grass':
+      mat.metallic = 0.0;
+      mat.roughness = 0.98;
+      break;
+    case 'earth':
+      mat.metallic = 0.01;
+      mat.roughness = 0.95;
+      break;
+    case 'sand':
+      mat.metallic = 0.0;
+      mat.roughness = 0.88;
+      break;
+    case 'water':
+      mat.metallic = 0.1;
+      mat.roughness = 0.05;
+      mat.alpha = 0.8;
       break;
     default:
       break;

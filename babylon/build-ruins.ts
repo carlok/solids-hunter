@@ -10,6 +10,7 @@ import {
   addAmbientFill,
   addBox,
   addDirFromPosition,
+  addDustMotes,
   addFloor,
   addPoint,
   addSkySphere,
@@ -44,12 +45,24 @@ export function buildRuinsScene(scene: Scene): ArenaBuildResult {
 
   addFloor(scene, meshes, 90, 0x5c5044, 'ruins');
 
-  const rPerimLo = 0x321c10;
-  const rPerimHi = 0x5c3820;
-  addWallBox(scene, meshes, wallBoxes, 90, 9, 0.5, rPerimLo, rPerimHi, 0, 4.5, -45, 0);
-  addWallBox(scene, meshes, wallBoxes, 90, 9, 0.5, rPerimLo, rPerimHi, 0, 4.5, 45, 0);
-  addWallBox(scene, meshes, wallBoxes, 0.5, 9, 90, rPerimLo, rPerimHi, -45, 4.5, 0, 0);
-  addWallBox(scene, meshes, wallBoxes, 0.5, 9, 90, rPerimLo, rPerimHi, 45, 4.5, 0, 0);
+  const rPerimLo = 0x2d2d2d; // Greyish stone
+  const rPerimHi = 0x5a5a5a;
+  
+  // Vary perimeter walls heights
+  for (let i = -40; i <= 40; i += 10) {
+    const h1 = 3 + Math.random() * 8;
+    const h2 = 3 + Math.random() * 8;
+    const h3 = 3 + Math.random() * 8;
+    const h4 = 3 + Math.random() * 8;
+    const ry1 = (Math.random() - 0.5) * 0.15;
+    const ry2 = (Math.random() - 0.5) * 0.15;
+    const ry3 = (Math.random() - 0.5) * 0.15;
+    const ry4 = (Math.random() - 0.5) * 0.15;
+    addWallBox(scene, meshes, wallBoxes, 11, h1, 1.5, rPerimLo, rPerimHi, i, h1 / 2, -45, ry1);
+    addWallBox(scene, meshes, wallBoxes, 11, h2, 1.5, rPerimLo, rPerimHi, i, h2 / 2, 45, ry2);
+    addWallBox(scene, meshes, wallBoxes, 1.5, h3, 11, rPerimLo, rPerimHi, -45, h3 / 2, i, ry3);
+    addWallBox(scene, meshes, wallBoxes, 1.5, h4, 11, rPerimLo, rPerimHi, 45, h4 / 2, i, ry4);
+  }
 
   const rInLo = 0x3a2412;
   const rInHi = 0x644030;
@@ -75,7 +88,12 @@ export function buildRuinsScene(scene: Scene): ArenaBuildResult {
     [-23, 0, -5],
   ] as const) {
     const ch = 1.5 + Math.random() * 4;
-    addWallBox(scene, meshes, wallBoxes, 1.2, ch, 1.2, 0x442818, 0x6a4838, x, ch / 2, z, 0);
+    // Mix grey and brown for pillars, with random Y rotation and height jitter
+    const isGrey = Math.random() > 0.5;
+    const pLo = isGrey ? 0x444444 : 0x442818;
+    const pHi = isGrey ? 0x6a6a6a : 0x6a4838;
+    const ry = (Math.random() - 0.5) * 0.4;
+    addWallBox(scene, meshes, wallBoxes, 1.2, ch, 1.2, pLo, pHi, x, ch / 2, z, ry);
     if (Math.random() > 0.45) {
       const capX = x + (Math.random() - 0.5) * 0.4;
       const capZ = z + (Math.random() - 0.5) * 0.4;
@@ -132,6 +150,17 @@ export function buildRuinsScene(scene: Scene): ArenaBuildResult {
       );
     }
   }
+
+  // Scattered rubble and debris across the floor
+  for (let i = 0; i < 45; i++) {
+    const dx = (Math.random() - 0.5) * 80;
+    const dz = (Math.random() - 0.5) * 80;
+    const s = 0.2 + Math.random() * 0.5;
+    const ry = Math.random() * Math.PI;
+    addWallBox(scene, meshes, wallBoxes, s, s, s, 0x3a3a3a, 0x6a6a6a, dx, s / 2, dz, ry);
+  }
+
+  addDustMotes(scene, meshes);
 
   addSkySphere(scene, meshes, textures);
   addSoftClouds(scene, meshes, textures, 20, 1);

@@ -32,8 +32,8 @@ export function aabbFromCenterAndSize(
 }
 
 const PLAYER_SIZE = new Vector3(0.5, 1.8, 0.5);
-/** Entity foot AABB size (world axes); same as Three `entWallSize` / wall separation. */
-export const ENTITY_FOOT_SIZE = new Vector3(0.48, 0.88, 0.48);
+/** Entity foot AABB size (world axes); slightly larger than mesh to limit rotation bleed into walls. */
+export const ENTITY_FOOT_SIZE = new Vector3(0.58, 0.92, 0.58);
 const _pMin = new Vector3();
 const _pMax = new Vector3();
 const _eMin = new Vector3();
@@ -145,7 +145,7 @@ export function separateEntityFromWalls(
     }
     const midX = (wbHit.min.x + wbHit.max.x) * 0.5;
     const midZ = (wbHit.min.z + wbHit.max.z) * 0.5;
-    const eps = 0.02;
+    const eps = 0.038;
     if (penX < penZ) {
       pos.x += pos.x < midX ? -(penX + eps) : penX + eps;
     } else {

@@ -53,3 +53,34 @@ export function wallColorInPalette(
   _wallMix.b = Math.min(1, Math.max(0, _wallMix.b + m * 0.22));
   return color3ToRgbNumber(_wallMix);
 }
+
+const _drift = new Color3();
+
+/**
+ * Stronger per-instance tint for static props (trees, rubble, rocks).
+ * `spread` scales RGB jitter in ~[0, 0.25].
+ */
+export function propColorDrift(base: number, salt: number, spread = 0.15): number {
+  const u = Math.sin(salt * 12.9898 + 2.7) * 43758.5453;
+  const v = Math.sin(salt * 78.233 + 5.1) * 43758.5453;
+  const w = Math.sin(salt * 43.771 + 0.9) * 43758.5453;
+  const dr = (u - Math.floor(u) - 0.5) * 2 * spread;
+  const dg = (v - Math.floor(v) - 0.5) * 2 * spread;
+  const db = (w - Math.floor(w) - 0.5) * 2 * spread;
+  _drift.copyFromFloats(
+    ((base >> 16) & 0xff) / 255,
+    ((base >> 8) & 0xff) / 255,
+    (base & 0xff) / 255,
+  );
+  _drift.r = Math.min(1, Math.max(0, _drift.r + dr - dg * 0.2));
+  _drift.g = Math.min(1, Math.max(0, _drift.g + dg));
+  _drift.b = Math.min(1, Math.max(0, _drift.b + db * 0.85 - dr * 0.12));
+  return color3ToRgbNumber(_drift);
+}
+
+/** Deterministic index in `0..len-1` from a float salt (stable per position). */
+export function palettePick(salt: number, len: number): number {
+  if (len <= 1) return 0;
+  const u = Math.sin(salt * 19.9898 + 1.3) * 43758.5453;
+  return Math.floor((u - Math.floor(u)) * len) % len;
+}

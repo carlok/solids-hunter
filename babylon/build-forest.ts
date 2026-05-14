@@ -1,5 +1,4 @@
 import {
-  Color3,
   DynamicTexture,
   Light,
   Mesh,
@@ -23,11 +22,19 @@ import {
   setAzureBackgroundExp2Fog,
   type ArenaBuildResult,
 } from './arena-shared';
-import { envTintHex } from './env-colors';
+import { envTintHex, palettePick, propColorDrift } from './env-colors';
 import { styleSurfaceMaterial } from './material-style';
 import { pushWallBoxCenterSize, type WallAABB } from './wall-collision';
 
 export const FOREST_ENV_SPAWN_HALF_XZ = 40;
+
+const TRUNK_BASES = [
+  0x1a0d06, 0x2a1810, 0x3d2818, 0x4a3220, 0x251208, 0x352014, 0x1f120a, 0x5c3a28,
+] as const;
+const LEAF_BASES = [
+  0x1b5e20, 0x2e7d32, 0x33691e, 0x558b2f, 0x43a047, 0x3d6b2a, 0x4caf50, 0x2a6b2f, 0x5d8a3a, 0x388e3c,
+] as const;
+const ROCK_BASES = [0x3a4a3a, 0x4a5550, 0x2d3830, 0x5a6058, 0x3d4838, 0x4a5c50] as const;
 
 /** Port of `ENVS.forest()`. */
 export function buildForestScene(scene: Scene): ArenaBuildResult {
@@ -87,7 +94,8 @@ export function buildForestScene(scene: Scene): ArenaBuildResult {
     );
     trunk.position.set(x, h / 2, z);
     const tmat = new StandardMaterial(`tmat_${x}_${z}`, scene);
-    applyDiffuseHex(tmat, envTintHex(0x2a1007, trunkSalt));
+    const tb = TRUNK_BASES[palettePick(trunkSalt, TRUNK_BASES.length)]!;
+    applyDiffuseHex(tmat, propColorDrift(tb, trunkSalt, 0.15));
     styleSurfaceMaterial(tmat, 'trunk');
     trunk.material = tmat;
     meshes.push(trunk);
@@ -105,7 +113,8 @@ export function buildForestScene(scene: Scene): ArenaBuildResult {
       );
       canopy.position.set(x, h - 0.5 + off + coneH / 2, z);
       const cmat = new StandardMaterial(`cmat_${x}_${z}_${i}`, scene);
-      applyDiffuseHex(cmat, envTintHex(0x2e6b2e, leafSalt));
+      const lb = LEAF_BASES[palettePick(leafSalt, LEAF_BASES.length)]!;
+      applyDiffuseHex(cmat, propColorDrift(lb, leafSalt, 0.13));
       styleSurfaceMaterial(cmat, 'canopy');
       canopy.material = cmat;
       meshes.push(canopy);
@@ -128,8 +137,9 @@ export function buildForestScene(scene: Scene): ArenaBuildResult {
     );
     rock.position.set(x, 0.4, z);
     const rmat = new StandardMaterial(`rmat_${x}_${z}`, scene);
-    rmat.specularColor = Color3.Black();
-    applyDiffuseHex(rmat, envTintHex(0x3a4a3a, x * 83 + z * 59));
+    const rk = ROCK_BASES[palettePick(x * 83 + z * 59, ROCK_BASES.length)]!;
+    applyDiffuseHex(rmat, propColorDrift(rk, x * 83 + z * 59, 0.12));
+    styleSurfaceMaterial(rmat, 'stone');
     rock.material = rmat;
     meshes.push(rock);
     pushWallBoxCenterSize(wallBoxes, x, 0.4, z, rockSize * 2.2, rockSize * 2.2, rockSize * 2.2);

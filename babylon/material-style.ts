@@ -11,7 +11,11 @@ export type MaterialSurfaceRole =
   | 'trunk'
   | 'canopy'
   | 'huntSolid'
-  | 'prop';
+  | 'prop'
+  | 'metal'
+  | 'stone'
+  | 'wood'
+  | 'ceramic';
 
 export function styleSurfaceMaterial(mat: StandardMaterial, role: MaterialSurfaceRole): void {
   mat.ambientColor.copyFrom(mat.diffuseColor);
@@ -62,6 +66,26 @@ export function styleSurfaceMaterial(mat: StandardMaterial, role: MaterialSurfac
       mat.ambientColor.scaleInPlace(0.21);
       mat.specularColor = Color3.FromInts(20, 22, 26);
       mat.specularPower = 26;
+      break;
+    case 'metal':
+      mat.ambientColor.scaleInPlace(0.12);
+      mat.specularColor = Color3.FromInts(90, 94, 102);
+      mat.specularPower = 118;
+      break;
+    case 'stone':
+      mat.ambientColor.scaleInPlace(0.32);
+      mat.specularColor = Color3.FromInts(28, 30, 32);
+      mat.specularPower = 12;
+      break;
+    case 'wood':
+      mat.ambientColor.scaleInPlace(0.26);
+      mat.specularColor = Color3.FromInts(38, 32, 26);
+      mat.specularPower = 18;
+      break;
+    case 'ceramic':
+      mat.ambientColor.scaleInPlace(0.24);
+      mat.specularColor = Color3.FromInts(48, 50, 54);
+      mat.specularPower = 58;
       break;
     default:
       break;

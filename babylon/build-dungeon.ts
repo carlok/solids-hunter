@@ -21,7 +21,7 @@ import {
   setAzureBackgroundLinearFog,
   type ArenaBuildResult,
 } from './arena-shared';
-import { envTintHex } from './env-colors';
+import { envTintHex, propColorDrift } from './env-colors';
 import { styleSurfaceMaterial } from './material-style';
 import type { WallAABB } from './wall-collision';
 
@@ -99,7 +99,7 @@ export function buildDungeonScene(scene: Scene): ArenaBuildResult {
       1.8,
       0.55,
       1.2,
-      envTintHex(0x2e3545, salt),
+      propColorDrift(0x2e3545, salt, 0.14),
       x,
       0.28,
       z,
@@ -107,7 +107,7 @@ export function buildDungeonScene(scene: Scene): ArenaBuildResult {
       false,
       wallBoxes,
       1,
-      'prop',
+      'stone',
     );
   }
 

@@ -21,7 +21,8 @@ import {
   setAzureBackgroundExp2Fog,
   type ArenaBuildResult,
 } from './arena-shared';
-import { envTintHex } from './env-colors';
+import { palettePick, propColorDrift } from './env-colors';
+import type { MaterialSurfaceRole } from './material-style';
 import type { WallAABB } from './wall-collision';
 
 export const RUINS_ENV_SPAWN_HALF_XZ = 40;
@@ -78,13 +79,15 @@ export function buildRuinsScene(scene: Scene): ArenaBuildResult {
     if (Math.random() > 0.45) {
       const capX = x + (Math.random() - 0.5) * 0.4;
       const capZ = z + (Math.random() - 0.5) * 0.4;
+      const capSalt = capX * 61 + capZ * 47 + ch * 2.1;
+      const capFinish: MaterialSurfaceRole = palettePick(capSalt, 2) === 0 ? 'stone' : 'wood';
       addBox(
         scene,
         meshes,
         2,
         0.45,
         2,
-        envTintHex(0x4a2e18, capX * 61 + capZ * 47 + ch * 2.1),
+        propColorDrift(0x4a2e18, capSalt, 0.13),
         capX,
         ch + 0.23,
         capZ,
@@ -92,7 +95,7 @@ export function buildRuinsScene(scene: Scene): ArenaBuildResult {
         false,
         wallBoxes,
         1,
-        'prop',
+        capFinish,
       );
     }
   }
@@ -109,13 +112,15 @@ export function buildRuinsScene(scene: Scene): ArenaBuildResult {
       const s = 0.22 + Math.random() * 0.65;
       const rx = x + (Math.random() - 0.5) * 2.5;
       const rz = z + (Math.random() - 0.5) * 2.5;
+      const rubSalt = rx * 51 + rz * 49 + i * 31 + s * 10;
+      const rubFinish: MaterialSurfaceRole = palettePick(rubSalt, 4) === 0 ? 'wood' : 'stone';
       addBox(
         scene,
         meshes,
         s,
         s * 0.45,
         s * 0.8,
-        envTintHex(0x3a2010, rx * 51 + rz * 49 + i * 31 + s * 10),
+        propColorDrift(0x3a2010, rubSalt, 0.14),
         rx,
         s * 0.23,
         rz,
@@ -123,7 +128,7 @@ export function buildRuinsScene(scene: Scene): ArenaBuildResult {
         false,
         wallBoxes,
         1,
-        'prop',
+        rubFinish,
       );
     }
   }

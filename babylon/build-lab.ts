@@ -23,7 +23,7 @@ import {
   setAzureBackgroundLinearFog,
   type ArenaBuildResult,
 } from './arena-shared';
-import { envTintHex } from './env-colors';
+import { envTintHex, propColorDrift } from './env-colors';
 import { styleSurfaceMaterial } from './material-style';
 import { pushWallBoxCenterSize, type WallAABB } from './wall-collision';
 
@@ -120,7 +120,7 @@ export function buildLabScene(scene: Scene): ArenaBuildResult {
       3,
       1.2,
       1.5,
-      envTintHex(0x121828, x * 67 + z * 53 + i * 17),
+      propColorDrift(0x121828, x * 67 + z * 53 + i * 17, 0.11),
       x,
       0.6,
       z,
@@ -128,7 +128,7 @@ export function buildLabScene(scene: Scene): ArenaBuildResult {
       false,
       wallBoxes,
       1,
-      'prop',
+      'metal',
     );
   });
 

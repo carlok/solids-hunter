@@ -377,6 +377,15 @@ export function updateGameEntities(params: {
   }
 
   for (const ent of entities) {
+    if (!ent.alive || ent.dying) continue;
+    const m = ent.root.position;
+    if (entityHitsWallAt(m, wallBoxes) && ent.moveMode === 'orbit') ent.orbitR *= 0.91;
+    separateEntityFromWalls(m, wallBoxes);
+    m.x = clampN(m.x, -entXZLim, entXZLim);
+    m.z = clampN(m.z, -entXZLim, entXZLim);
+  }
+
+  for (const ent of entities) {
     if (!ent.alive) continue;
     const m = ent.root.position;
     if (!ent.dying) {

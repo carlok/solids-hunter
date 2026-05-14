@@ -16,7 +16,7 @@ import {
 } from '@babylonjs/core';
 
 import { envTintHex, wallColorInPalette } from './env-colors';
-import { styleSurfaceMaterial } from './material-style';
+import { styleSurfaceMaterial, type MaterialSurfaceRole } from './material-style';
 import {
   pushWallBoxCenterSize,
   pushWallBoxCenterSizeRotY,
@@ -217,7 +217,7 @@ export function addBox(
   isWall: boolean,
   wallBoxes: WallAABB[],
   opacity = 1,
-  surfaceHint: 'none' | 'floorPatch' | 'prop' = 'none',
+  surfaceHint: 'none' | MaterialSurfaceRole = 'none',
 ): Mesh {
   const mesh = MeshBuilder.CreateBox(
     `env_${meshes.length}`,
@@ -235,10 +235,8 @@ export function addBox(
   applyDiffuseHex(mat, color);
   if (isWall) {
     styleSurfaceMaterial(mat, 'wall');
-  } else if (surfaceHint === 'floorPatch') {
-    styleSurfaceMaterial(mat, 'floorPatch');
-  } else if (surfaceHint === 'prop') {
-    styleSurfaceMaterial(mat, 'prop');
+  } else if (surfaceHint !== 'none') {
+    styleSurfaceMaterial(mat, surfaceHint);
   }
   mesh.material = mat;
   meshes.push(mesh);
@@ -316,7 +314,7 @@ export function addFloor(
   const base = liftRgb(baseColor, 0.32);
   const main = MeshBuilder.CreateGround(
     `floor_${meshes.length}`,
-    { width: size, height: size, subdivisions: 2 },
+    { width: size, height: size, subdivisions: 6 },
     scene,
   );
   const mat = new StandardMaterial(`floorMat_${meshes.length}`, scene);
@@ -329,18 +327,30 @@ export function addFloor(
   const rnd = mulberry32(seed);
 
   const patchesByStyle: Record<ArenaFloorStyle, number[]> = {
-    lab: [0x5a8ab8, 0x7eb8d8, 0x4a78a0, 0xa0d0f0, 0x3a6888, 0xb8e0f8],
-    dungeon: [0x6c4838, 0x8a6248, 0x543028, 0x7a5848, 0x402018, 0x9a7258],
-    forest: [0x558b2f, 0x6b8e23, 0x8b7355, 0x33691e, 0xa1887f, 0x5d4037, 0x689f38, 0x795548],
-    ruins: [0xc8b8a8, 0xa89078, 0x8d6e63, 0xd7ccc8, 0x795548, 0xbcaaa4, 0xa1887f],
+    lab: [
+      0x4a78a8, 0x6a98c8, 0x3a6888, 0x88b8d8, 0x2a5878, 0xa0d0f0, 0x5080a0, 0x78a8c0, 0x5c7a9a,
+      0x98c0e0,
+    ],
+    dungeon: [
+      0x5c4034, 0x7a5a48, 0x4a3028, 0x6b5040, 0x3d281c, 0x8a6a52, 0x483028, 0x705040, 0x584038,
+      0x3a2018,
+    ],
+    forest: [
+      0x4a7c34, 0x5d8a3a, 0x3d6b2a, 0x6b9e4a, 0x558b2f, 0x33691e, 0x7aae52, 0x455c38, 0x8b7355,
+      0x689f38,
+    ],
+    ruins: [
+      0xc8b8a8, 0xa89078, 0x8d6e63, 0xd7ccc8, 0x795548, 0xbcaaa4, 0xb5a090, 0x9a8070, 0xded0c8,
+      0x887060,
+    ],
   };
   const patchColors = patchesByStyle[style];
 
-  const n = 11 + Math.floor(rnd() * 9);
+  const n = 22 + Math.floor(rnd() * 16);
   const margin = 3;
   for (let i = 0; i < n; i++) {
-    const pw = 2.2 + rnd() * 9;
-    const pd = 2.2 + rnd() * 9;
+    const pw = 1.85 + rnd() * 10.5;
+    const pd = 1.85 + rnd() * 10.5;
     const half = size * 0.5 - margin;
     const x = (rnd() * 2 - 1) * Math.max(0, half - pw * 0.5);
     const z = (rnd() * 2 - 1) * Math.max(0, half - pd * 0.5);
@@ -364,8 +374,35 @@ export function addFloor(
     );
   }
 
+  const microN = 26 + Math.floor(rnd() * 14);
+  for (let i = 0; i < microN; i++) {
+    const pw = 0.5 + rnd() * 2.15;
+    const pd = 0.5 + rnd() * 2.15;
+    const half = size * 0.5 - margin;
+    const x = (rnd() * 2 - 1) * Math.max(0, half - pw * 0.5);
+    const z = (rnd() * 2 - 1) * Math.max(0, half - pd * 0.5);
+    const col = patchColors[Math.floor(rnd() * patchColors.length)]!;
+    const py = 0.042 + rnd() * 0.022 + (i % 7) * 0.0004;
+    addBox(
+      scene,
+      meshes,
+      pw,
+      0.038,
+      pd,
+      envTintHex(col, x * 91 + z * 67 + i * 19 + 901),
+      x,
+      py,
+      z,
+      rnd() * Math.PI * 2,
+      false,
+      [],
+      1,
+      'floorPatch',
+    );
+  }
+
   const voxelN =
-    style === 'forest' ? 34 : style === 'ruins' ? 28 : style === 'dungeon' ? 24 : 20;
+    style === 'forest' ? 46 : style === 'ruins' ? 38 : style === 'dungeon' ? 34 : 30;
   for (let i = 0; i < voxelN; i++) {
     const bx = 0.32 + rnd() * 0.55;
     const bz = 0.32 + rnd() * 0.55;

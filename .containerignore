@@ -1,0 +1,8 @@
+# Keep build context small (Podman / docker build).
+.git
+node_modules
+dist
+dist-babylon
+coverage
+*.log
+.DS_Store

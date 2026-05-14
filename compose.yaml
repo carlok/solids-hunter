@@ -1,35 +1,76 @@
-# Podman Compose: official images only — no COPY of the app into images.
-# The repo is bind-mounted at /app; Node deps live in named volumes (not on the host).
+# Podman: `podman compose build` then `podman compose run --rm <service>`
+# Dev server: `podman compose up dev` → http://localhost:5173 (Vite / Babylon)
+#
+# node_modules live in a named volume (not on the host tree).
+
+x-app-build: &app-build
+  context: .
+  dockerfile: Containerfile
+
+services:
+  install:
+    build: *app-build
+    volumes:
+      - .:/app:Z
+      - node_modules:/app/node_modules
+    working_dir: /app
+    command: ["npm", "ci"]
+
+  dev:
+    build: *app-build
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app:Z
+      - node_modules:/app/node_modules
+    working_dir: /app
+    environment:
+      CHOKIDAR_USEPOLLING: "1"
+    command:
+      [
+        "npm",
+        "run",
+        "dev",
+        "--",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "5173",
+      ]
+
+  test:
+    build: *app-build
+    volumes:
+      - .:/app:Z
+      - node_modules:/app/node_modules
+    working_dir: /app
+    command: ["npm", "test"]
+
+  test-cov:
+    build: *app-build
+    volumes:
+      - .:/app:Z
+      - node_modules:/app/node_modules
+    working_dir: /app
+    command: ["npm", "run", "test:cov"]
+
+  build:
+    build: *app-build
+    volumes:
+      - .:/app:Z
+      - node_modules:/app/node_modules
+    working_dir: /app
+    command: ["npm", "run", "build"]
+
+  shell:
+    build: *app-build
+    volumes:
+      - .:/app:Z
+      - node_modules:/app/node_modules
+    working_dir: /app
+    stdin_open: true
+    tty: true
+    command: ["bash"]
 
 volumes:
   node_modules:
-  npm_cache:
-
-services:
-  web:
-    image: docker.io/nginx:stable-alpine
-    ports:
-      - "8080:80"
-    volumes:
-      - ./:/usr/share/nginx/html:ro,Z
-      - ./deploy/nginx-default.conf:/etc/nginx/conf.d/default.conf:ro,Z
-
-  test:
-    image: docker.io/node:22-alpine
-    working_dir: /app
-    volumes:
-      - ./:/app:Z
-      - node_modules:/app/node_modules
-      - npm_cache:/root/.npm
-    environment:
-      npm_config_update_notifier: "false"
-
-  build:
-    image: docker.io/node:22-alpine
-    working_dir: /app
-    volumes:
-      - ./:/app:Z
-      - node_modules:/app/node_modules
-      - npm_cache:/root/.npm
-    environment:
-      npm_config_update_notifier: "false"

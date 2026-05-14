@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { xzOverlapSeparation } from '../js/lib/entity-collision-2d.js';
+import { xzOverlapSeparation } from '../lib/entity-collision-2d.js';
 
 describe('xzOverlapSeparation', () => {
   it('returns zero shift when discs are separated', () => {

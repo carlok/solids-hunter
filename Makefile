@@ -4,25 +4,29 @@
 
 COMPOSE ?= podman compose
 
-.PHONY: dev down test coverage dist clean lock
+.PHONY: dev down test coverage dist clean lock install
 
+# Vite — open http://127.0.0.1:5173/
 dev:
-	$(COMPOSE) up web
+	$(COMPOSE) up dev
 
 down:
 	$(COMPOSE) down
+
+install:
+	$(COMPOSE) run --rm install
 
 test:
 	$(COMPOSE) run --rm test sh -c "npm ci && npm run test"
 
 coverage:
-	$(COMPOSE) run --rm test sh -c "npm ci && npm run test:cov"
+	$(COMPOSE) run --rm test-cov sh -c "npm ci && npm run test:cov"
 
 dist:
 	$(COMPOSE) run --rm build sh -c "npm ci && npm run build"
 
 clean:
-	rm -rf dist coverage
+	rm -rf dist-babylon coverage
 	$(COMPOSE) down -v
 
 lock:

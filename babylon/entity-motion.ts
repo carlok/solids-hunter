@@ -60,6 +60,14 @@ export type SpawnGameOptions = {
 
 export const gameFeedback = { paused: false };
 
+/**
+ * Max |x| and |z| for entity motion clamp and player walk clamp (parity with js/main.js).
+ * Tied to arena {@link SpawnGameOptions.envSpawnHalfXZ}.
+ */
+export function xzPlayHalfLimit(envSpawnHalfXZ: number): number {
+  return Math.min(29.8, envSpawnHalfXZ - 1.2);
+}
+
 /** Dispose every spawned entity and clear the list (arena teardown / new round). */
 export function disposeAllGameEntities(list: GameEntity[]): void {
   while (list.length) {
@@ -186,7 +194,7 @@ export function updateGameEntities(params: {
 
   if (freeze) return;
 
-  const entXZLim = Math.min(29.8, envSpawnHalfXZ - 1.2);
+  const entXZLim = xzPlayHalfLimit(envSpawnHalfXZ);
 
   for (const ent of entities) {
     if (!ent.alive) continue;

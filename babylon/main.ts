@@ -23,7 +23,13 @@ import {
   wireCoachAndSoundUi,
 } from './coach';
 import type { HuntRule } from './entities';
-import { disposeAllGameEntities, gameFeedback, spawnGameEntities, updateGameEntities } from './entity-motion';
+import {
+  disposeAllGameEntities,
+  gameFeedback,
+  spawnGameEntities,
+  updateGameEntities,
+  xzPlayHalfLimit,
+} from './entity-motion';
 import { GameAudio } from './game-audio';
 import { attachBabylonShooting } from './shoot-input';
 import { hitsEntity, hitsWall } from './wall-collision';
@@ -457,7 +463,7 @@ engine.runRenderLoop(() => {
       mx = (mx / len) * MV * dt;
       mz = (mz / len) * MV * dt;
       GameAudio.maybeFootstep(dt, true);
-      const bound = 40;
+      const bound = xzPlayHalfLimit(arena.envSpawnHalfXZ);
       const cur = camera.position;
       const blocked = (p: Vector3) =>
         hitsWall(p, arena.wallBoxes) || hitsEntity(p, entities);

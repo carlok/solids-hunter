@@ -156,6 +156,10 @@
     isMuted() {
       return muted;
     },
+    /** When true, Web Speech / coach TTS should not run (same as mute). */
+    isSpeechAllowed() {
+      return !muted;
+    },
     setMuted(on) {
       persistMuted(on);
     },

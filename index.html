@@ -30,11 +30,21 @@
       <li><strong>Look:</strong> mouse (pointer lock after you start)</li>
       <li><strong>Shoot:</strong> left-click on a shape</li>
       <li><strong>Rule:</strong> shown in full on the hunt screen; during play it stays at the <strong>top center</strong> of the HUD</li>
-      <li><strong>Sound:</strong> <strong>M</strong> toggles mute anytime; arena / rule / pause screens also have a <strong>Sound: ON/OFF</strong> button; in-game, top-left icon or <strong>M</strong></li>
+      <li><strong>Sound:</strong> <strong>M</strong> toggles mute anytime; arena / rule / pause screens also have a <strong>Sound: ON/OFF</strong> button; in-game, top-left icon or <strong>M</strong> (mute also silences spoken coach lines)</li>
+      <li><strong>Hit coach:</strong> arena / rule / pause — cycle <strong>Coach: OFF / VOICE / MODAL</strong>. Wrong hits: voice-only pauses targets briefly with a subtitle; modal+voice unlocks the cursor until you confirm. Correct hits stay instant; coach adds optional spoken tips. Speech picks the best available <strong>English</strong> voice from your browser (see <a href="https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesisUtterance/voice" target="_blank" rel="noopener">MDN</a>) and reads a <strong>short</strong> line aloud (like <a href="https://github.com/carlok/agility-trainer" target="_blank" rel="noopener">Agility Trainer</a>); the modal still shows the full text. Set <code>localStorage.solidsHunterHitConfirmN</code> to limit coaching to the first N hits per round (0 = unlimited).</li>
       <li><strong>Pause:</strong> Esc — opens pause; click Resume to continue</li>
       <li><strong>Menu:</strong> ☰ top-left — Help, Credits, Main menu</li>
     </ul>
     <p>Solids move in different ways (drift, bounce, orbit, slide). Correct match +10 points. Wrong target −5. Clear every matching solid to finish the round.</p>
+  </div>
+</div>
+
+<div id="modal-hit-feedback" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="hit-feedback-title">
+  <div class="modal-card modal-card--hit">
+    <h2 id="hit-feedback-title">Rule check</h2>
+    <p id="hit-feedback-body" class="hit-feedback-body"></p>
+    <p class="hit-feedback-hint"><strong>OK</strong> unlocks when the coach finishes speaking. Then click the arena to capture the mouse again.</p>
+    <button type="button" class="btn" id="hit-feedback-ok">OK</button>
   </div>
 </div>
 
@@ -44,6 +54,7 @@
     <h2 id="credits-title">CREDITS</h2>
     <p><strong>Solids Hunter</strong></p>
     <p>By <strong>Carlo Perassi</strong>.</p>
+    <p>Source &amp; updates: <a href="https://github.com/carlok/solidshunter" target="_blank" rel="noopener">github.com/carlok/solidshunter</a></p>
     <p>Built with <a href="https://threejs.org/" target="_blank" rel="noopener">Three.js</a> (r128) and PointerLockControls. Procedural environments and entities — no external 3D assets.</p>
     <p style="margin-top:1rem;font-size:0.72rem;color:#7a8799;">Released under the MIT License. Thanks for playing.</p>
   </div>
@@ -57,8 +68,9 @@
 <div id="env-screen" class="screen">
   <div class="game-title">SOLIDS HUNTER</div>
   <div class="subtitle">CHOOSE YOUR ARENA</div>
-  <div class="menu-settings-row" role="group" aria-label="Settings">
+  <div class="menu-settings-row menu-settings-row--stack" role="group" aria-label="Settings">
     <button type="button" id="menu-sound-toggle" class="btn sec sound-menu-btn" aria-pressed="false">Sound: ON</button>
+    <button type="button" id="menu-coach-btn" class="btn sec coach-menu-btn" title="Spoken / modal coaching on wrong hits">Coach: OFF</button>
   </div>
   <div class="env-grid">
     <div class="env-card" data-env="dungeon">
@@ -90,8 +102,9 @@
   <div class="lbl">YOUR TARGET</div>
   <div class="rule" id="rule-disp"></div>
   <div class="hint">Correct hit +10 pts &nbsp;·&nbsp; Wrong click −5 pts</div>
-  <div class="hunt-settings-row" role="group" aria-label="Settings">
+  <div class="hunt-settings-row hunt-settings-row--stack" role="group" aria-label="Settings">
     <button type="button" id="hunt-sound-toggle" class="btn sec sound-menu-btn" aria-pressed="false">Sound: ON</button>
+    <button type="button" id="hunt-coach-btn" class="btn sec coach-menu-btn" title="Spoken / modal coaching on wrong hits">Coach: OFF</button>
   </div>
   <div class="hunt-actions">
     <button class="btn" id="start-btn">LOCK AND LOAD →</button>
@@ -150,14 +163,16 @@
     </div>
   </div>
   <div id="hud-hint">WASD / ARROWS · MOUSE LOOK · CLICK TO SHOOT · <strong>M</strong> OR 🔊 TOP-LEFT = SOUND · ESC PAUSE</div>
+  <div id="hud-coach-toast" class="hud-coach-toast hidden" role="status" aria-live="polite"></div>
 </div>
 
 <!-- PAUSED -->
 <div id="paused" class="screen hidden">
   <div class="p-title">PAUSED</div>
   <div class="p-sub">Click to resume</div>
-  <div class="paused-settings-row" role="group" aria-label="Settings">
+  <div class="paused-settings-row paused-settings-row--stack" role="group" aria-label="Settings">
     <button type="button" id="pause-sound-toggle" class="btn sec sound-menu-btn" aria-pressed="false">Sound: ON</button>
+    <button type="button" id="pause-coach-btn" class="btn sec coach-menu-btn" title="Spoken / modal coaching on wrong hits">Coach: OFF</button>
   </div>
   <div class="paused-actions">
     <button class="btn" id="resume-btn">RESUME →</button>

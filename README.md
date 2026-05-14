@@ -1,6 +1,6 @@
 # Solids Hunter
 
-First-person hunt by **Carlo Perassi**. Built with [Three.js](https://threejs.org/) r128 and `PointerLockControls`. Pick an arena, read the round rule, lock the pointer, then shoot only solids that satisfy the rule.
+First-person hunt. Built with [Three.js](https://threejs.org/) r128 and `PointerLockControls`. Pick an arena, read the round rule, lock the pointer, then shoot only solids that satisfy the rule.
 
 ## Hunt rules
 

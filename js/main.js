@@ -168,6 +168,16 @@ let selectedEnv = null;
 /** Half-extent (XZ) for entity spawn / wander targets after arena margin. */
 let envSpawnHalfXZ = 32;
 
+/** When true, entity motion (not rendering) is frozen — wrong-hit coach. */
+let feedbackPaused = false;
+/** Shots that hit a solid this round (for first-N coach cap). */
+let shotsThisRound = 0;
+let copyPoolIdx = 0;
+let pendingEndRoundTimer = null;
+let wrongVoiceTimer = null;
+let hudToastTimer = null;
+let wantReLockAfterWrongModal = false;
+
 // ═══════════════════════════════════════════
 //  UI REFS
 // ═══════════════════════════════════════════
@@ -204,6 +214,13 @@ const navToggle  = document.getElementById('nav-toggle');
 const navDropdown = document.getElementById('nav-dropdown');
 const modalHelp  = document.getElementById('modal-help');
 const modalCredits = document.getElementById('modal-credits');
+const modalHitFeedback = document.getElementById('modal-hit-feedback');
+const hitFeedbackBody = document.getElementById('hit-feedback-body');
+const hitFeedbackOk = document.getElementById('hit-feedback-ok');
+const hudCoachToast = document.getElementById('hud-coach-toast');
+const menuCoachBtn = document.getElementById('menu-coach-btn');
+const huntCoachBtn = document.getElementById('hunt-coach-btn');
+const pauseCoachBtn = document.getElementById('pause-coach-btn');
 const lockErrBanner = document.getElementById('lock-err-banner');
 
 function hideLockErrBanner() {
@@ -213,6 +230,385 @@ function hideLockErrBanner() {
 function showLockErrBanner(text) {
   lockErrBanner.textContent = text;
   lockErrBanner.classList.remove('hidden');
+}
+
+
+const LS_HIT_CONFIRM = 'solidsHunterHitConfirm';
+const LS_HIT_CONFIRM_N = 'solidsHunterHitConfirmN';
+
+function getHitConfirmMode() {
+  try {
+    const v = localStorage.getItem(LS_HIT_CONFIRM);
+    if (v === 'voice' || v === 'modal') return v;
+  } catch (e) {}
+  return 'off';
+}
+
+function setHitConfirmMode(mode) {
+  try {
+    if (mode === 'off' || mode === 'voice' || mode === 'modal') {
+      localStorage.setItem(LS_HIT_CONFIRM, mode);
+    }
+  } catch (e) {}
+  syncCoachButtons();
+}
+
+function cycleHitConfirmMode() {
+  const o = getHitConfirmMode();
+  const next = o === 'off' ? 'voice' : o === 'voice' ? 'modal' : 'off';
+  setHitConfirmMode(next);
+}
+
+function getHitConfirmFirstN() {
+  try {
+    const n = parseInt(localStorage.getItem(LS_HIT_CONFIRM_N) || '0', 10);
+    if (n > 0 && n < 500) return n;
+  } catch (e) {}
+  return 0;
+}
+
+function coachAppliesThisShot() {
+  if (getHitConfirmMode() === 'off') return false;
+  const cap = getHitConfirmFirstN();
+  if (cap <= 0) return true;
+  return shotsThisRound < cap;
+}
+
+function syncCoachButtons() {
+  const mode = getHitConfirmMode();
+  const cap = getHitConfirmFirstN();
+  let label = 'Coach: OFF';
+  if (mode === 'voice') label = 'Coach: VOICE';
+  if (mode === 'modal') label = 'Coach: MODAL';
+  if (cap > 0) label += ' · first ' + cap;
+  [menuCoachBtn, huntCoachBtn, pauseCoachBtn].forEach((el) => {
+    if (!el) return;
+    el.textContent = label;
+  });
+}
+
+function enableHitFeedbackOkButton() {
+  if (!hitFeedbackOk) return;
+  hitFeedbackOk.disabled = false;
+  hitFeedbackOk.removeAttribute('aria-busy');
+}
+
+function cancelHitSpeech() {
+  try {
+    if (typeof speechSynthesis !== 'undefined' && speechSynthesis.cancel) {
+      speechSynthesis.cancel();
+    }
+  } catch (e) {}
+  if (hitFeedbackModalVisible() && hitFeedbackOk) {
+    enableHitFeedbackOkButton();
+  }
+}
+
+function resetHitFeedbackState() {
+  feedbackPaused = false;
+  wantReLockAfterWrongModal = false;
+  if (wrongVoiceTimer) {
+    clearTimeout(wrongVoiceTimer);
+    wrongVoiceTimer = null;
+  }
+  if (hudToastTimer) {
+    clearTimeout(hudToastTimer);
+    hudToastTimer = null;
+  }
+  if (pendingEndRoundTimer) {
+    clearTimeout(pendingEndRoundTimer);
+    pendingEndRoundTimer = null;
+  }
+  cancelHitSpeech();
+  enableHitFeedbackOkButton();
+  if (modalHitFeedback) modalHitFeedback.classList.add('hidden');
+  if (hudCoachToast) {
+    hudCoachToast.classList.add('hidden');
+    hudCoachToast.textContent = '';
+  }
+}
+
+function hitFeedbackModalVisible() {
+  return modalHitFeedback && !modalHitFeedback.classList.contains('hidden');
+}
+
+function ruleOneLiner() {
+  const t = currentRule.lines.join(' ').replace(/\s+/g, ' ').trim();
+  return t.length > 160 ? t.slice(0, 157).trim() + '…' : t;
+}
+
+function pickWrongIntro(color, shape) {
+  const pool = [
+    () => `That solid is a ${color} ${shape}.`,
+    () => `You tagged a ${color} ${shape}.`,
+    () => `This one reads ${color} ${shape} on the label.`,
+    () => `${color} ${shape} — noted.`,
+  ];
+  const f = pool[copyPoolIdx % pool.length];
+  copyPoolIdx++;
+  return f();
+}
+
+function pickWrongBridge() {
+  const pool = [
+    () => "It doesn’t match the rule shown at the top of the HUD right now.",
+    () => 'Compare it to the rule strip: it doesn’t satisfy that boolean.',
+    () => 'The on-screen rule is what counts; this pick doesn’t fit it.',
+    () => 'Re-read the target rule — this shape isn’t in the solution set.',
+  ];
+  const f = pool[copyPoolIdx % pool.length];
+  copyPoolIdx++;
+  return f();
+}
+
+function pickWrongTask() {
+  const pool = [
+    () => 'Keep scanning for solids that make the rule true.',
+    () => 'Look for another solid that satisfies the boolean expression.',
+    () => 'Next click: aim for a solid that fits the rule text.',
+    () => 'Stay with the rule at the top — hunt targets that satisfy it.',
+  ];
+  const f = pool[copyPoolIdx % pool.length];
+  copyPoolIdx++;
+  return f();
+}
+
+function buildWrongCoachText(color, shape) {
+  return `${pickWrongIntro(color, shape)}\n\n${pickWrongBridge()}\n\n${pickWrongTask()}`;
+}
+
+function pickCorrectToast(color, shape) {
+  const pool = [
+    `Locked in — ${color} ${shape}.`,
+    `That one satisfies the rule: ${color} ${shape}.`,
+    `Clean pick: ${color} ${shape}.`,
+    `Rule satisfied — ${color} ${shape}.`,
+    `Yes — ${color} ${shape} matches the target rule.`,
+  ];
+  const line = pool[copyPoolIdx % pool.length];
+  copyPoolIdx++;
+  return line;
+}
+
+function showHudToast(text, ms) {
+  if (!hudCoachToast) return;
+  hudCoachToast.textContent = text;
+  hudCoachToast.classList.remove('hidden');
+  if (hudToastTimer) clearTimeout(hudToastTimer);
+  hudToastTimer = setTimeout(() => {
+    hudToastTimer = null;
+    hudCoachToast.classList.add('hidden');
+  }, ms || 2400);
+}
+
+/** Coach TTS: en-US + agility-style rate; pick best English voice from getVoices (MDN: use a voice from the list; default + quality heuristics). @see https://github.com/carlok/agility-trainer/blob/main/js/speech.js */
+const COACH_SPEECH_LANG = 'en-US';
+const COACH_SPEECH_RATE = 0.95;
+
+if (typeof speechSynthesis !== 'undefined') {
+  try {
+    void speechSynthesis.getVoices();
+  } catch (e) {}
+  speechSynthesis.addEventListener('voiceschanged', () => {
+    try {
+      void speechSynthesis.getVoices();
+    } catch (e2) {}
+  });
+}
+
+/**
+ * Shorter script for TTS only. Agility-trainer speaks brief lines; long paragraphs
+ * make any engine sound choppy/robotic. Full text stays in the modal / toast.
+ * @param {string} body multi-paragraph coach copy
+ * @param {number} [maxLen]
+ */
+function coachSpokenFromBody(body, maxLen) {
+  const max = maxLen == null ? 400 : maxLen;
+  const paras = String(body)
+    .split(/\n\s*\n/)
+    .map((p) => p.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  let out = paras.slice(0, 2).join(' ');
+  if (out.length > max) out = out.slice(0, max - 1).trimEnd() + '…';
+  return out;
+}
+
+/**
+ * Pick the most natural-sounding en* voice available (Chrome/Safari/macOS/Windows differ widely).
+ * @returns {SpeechSynthesisVoice | null}
+ */
+function getPreferredEnglishVoice() {
+  if (typeof speechSynthesis === 'undefined') return null;
+  const list = speechSynthesis.getVoices();
+  if (!list.length) return null;
+  const normLang = (s) => (s || '').toLowerCase().replace('_', '-');
+  const en = list.filter((v) => /^en\b/i.test(normLang(v.lang)));
+  if (!en.length) return null;
+
+  function score(v) {
+    const n = (v.name || '').toLowerCase();
+    let s = 0;
+    if (v.default === true) s += 85;
+    if (/\bgoogle us english\b/.test(n)) s += 50;
+    if (/\bgoogle uk english (female|male)\b/.test(n)) s += 42;
+    if (/\bsamantha\b/.test(n)) s += 42;
+    if (/\b(victoria|karen|fiona|allison|serena|moira|tessa|daniel|martha|arthur|oliver)\b/.test(n)) s += 28;
+    if (/\b(natural|premium|enhanced|neural)\b/.test(n)) s += 34;
+    if (/\bgoogle\b/.test(n)) s += 20;
+    if (/\bmicrosoft\b/.test(n) && /\b(aria|jenny|guy|zira|mark|susan|andrew|sonia)\b/.test(n)) s += 30;
+    const L = normLang(v.lang);
+    if (L === 'en-us' || L.startsWith('en-us')) s += 12;
+    if (/\b(zarvox|fred|albert|bad news|cellos|kathy|agnes|vicki)\b/.test(n)) s -= 50;
+    if (/\b(whisper|croak|rocko)\b/.test(n)) s -= 40;
+    if (/\bcompact\b/.test(n)) s -= 18;
+    return s;
+  }
+
+  let best = en[0];
+  let bestS = score(best);
+  for (let i = 1; i < en.length; i++) {
+    const t = score(en[i]);
+    if (t > bestS) {
+      bestS = t;
+      best = en[i];
+    }
+  }
+  return best;
+}
+
+/**
+ * Speak coach line with an English voice. When `onEnd` is provided, it runs
+ * after speech finishes or errors (or immediately if speech is skipped).
+ * @param {string} text
+ * @param {(() => void) | undefined} onEnd
+ * @returns {number} rough ms estimate (legacy; prefer onEnd for gating)
+ */
+function speakCoachLine(text, onEnd) {
+  const done = () => {
+    if (typeof onEnd === 'function') {
+      try {
+        onEnd();
+      } catch (e) {}
+    }
+  };
+  if (!text) {
+    queueMicrotask(done);
+    return 400;
+  }
+  if (typeof speechSynthesis === 'undefined') {
+    queueMicrotask(done);
+    return 600;
+  }
+  if (!(window.GameAudio && GameAudio.isSpeechAllowed && GameAudio.isSpeechAllowed())) {
+    queueMicrotask(done);
+    return 600;
+  }
+  try {
+    try {
+      if (speechSynthesis.paused) speechSynthesis.resume();
+    } catch (e0) {}
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    const voice = getPreferredEnglishVoice();
+    if (voice) {
+      u.voice = voice;
+      const vl = (voice.lang || '').toLowerCase().replace('_', '-');
+      if (/^en-us/.test(vl)) u.lang = 'en-US';
+      else if (/^en-gb/.test(vl)) u.lang = 'en-GB';
+      else if (/^en/.test(vl)) u.lang = (voice.lang || COACH_SPEECH_LANG).replace('_', '-');
+      else u.lang = COACH_SPEECH_LANG;
+    } else {
+      u.lang = COACH_SPEECH_LANG;
+    }
+    u.rate = COACH_SPEECH_RATE;
+    u.pitch = 1;
+    u.volume = 1;
+    u.onend = done;
+    u.onerror = done;
+    speechSynthesis.speak(u);
+    const w = text.length;
+    return Math.min(4200, 520 + w * 48);
+  } catch (e) {
+    queueMicrotask(done);
+    return 600;
+  }
+}
+
+function scheduleEndRoundAfterMs(ms) {
+  if (matchLeft > 0) return;
+  if (pendingEndRoundTimer) clearTimeout(pendingEndRoundTimer);
+  pendingEndRoundTimer = setTimeout(() => {
+    pendingEndRoundTimer = null;
+    endRound();
+  }, Math.max(700, ms | 0));
+}
+
+function finishWrongModalAndResume() {
+  if (hitFeedbackOk && hitFeedbackOk.disabled) return;
+  if (modalHitFeedback) modalHitFeedback.classList.add('hidden');
+  cancelHitSpeech();
+  feedbackPaused = false;
+  wantReLockAfterWrongModal = true;
+  showLockErrBanner('Click the arena to capture the mouse again and continue hunting.');
+}
+
+function beginWrongCoachVoiceOnly(color, shape) {
+  const body = buildWrongCoachText(color, shape);
+  const parts = body.split('\n\n');
+  showHudToast(parts[0] + ' — check the rule strip.', 2800);
+  const spoken = coachSpokenFromBody(body);
+  feedbackPaused = true;
+  if (wrongVoiceTimer) {
+    clearTimeout(wrongVoiceTimer);
+    wrongVoiceTimer = null;
+  }
+  speakCoachLine(spoken, () => {
+    feedbackPaused = false;
+  });
+}
+
+function beginWrongCoachModal(color, shape) {
+  const body = buildWrongCoachText(color, shape);
+  if (hitFeedbackBody) hitFeedbackBody.textContent = body;
+  feedbackPaused = true;
+  if (modalHitFeedback) modalHitFeedback.classList.remove('hidden');
+  if (hitFeedbackOk) {
+    hitFeedbackOk.disabled = true;
+    hitFeedbackOk.setAttribute('aria-busy', 'true');
+  }
+  try {
+    controls.unlock();
+  } catch (e) {}
+  const spoken = coachSpokenFromBody(body);
+  speakCoachLine(spoken, () => {
+    enableHitFeedbackOkButton();
+  });
+}
+
+/** After the last correct hit of the round, delay round end until coach speech ends (if any). */
+function scheduleEndRoundAfterCorrectCoach(ent, coachThis) {
+  if (matchLeft > 0) return;
+  const mode = getHitConfirmMode();
+  if (
+    !coachThis ||
+    mode === 'off' ||
+    !(window.GameAudio && GameAudio.isSpeechAllowed && GameAudio.isSpeechAllowed())
+  ) {
+    scheduleEndRoundAfterMs(700);
+    return;
+  }
+  const tip = pickCorrectToast(ent.color, ent.shape);
+  showHudToast(tip, 2200);
+  speakCoachLine(tip, () => {
+    scheduleEndRoundAfterMs(700);
+  });
+}
+
+function onHitWrongAfterScoring(ent, coachThis) {
+  if (!coachThis) return;
+  const mode = getHitConfirmMode();
+  if (mode === 'voice') beginWrongCoachVoiceOnly(ent.color, ent.shape);
+  else if (mode === 'modal') beginWrongCoachModal(ent.color, ent.shape);
 }
 
 window.addEventListener('keydown', e => {
@@ -227,6 +623,13 @@ window.addEventListener('keydown', e => {
       e.preventDefault();
       return;
     }
+    if (hitFeedbackModalVisible()) {
+      e.preventDefault();
+      if (!hitFeedbackOk || !hitFeedbackOk.disabled) {
+        finishWrongModalAndResume();
+      }
+      return;
+    }
   }
   if (e.code === 'KeyM' && !e.repeat) {
     const t = e.target;
@@ -237,6 +640,7 @@ window.addEventListener('keydown', e => {
         (typeof t.isContentEditable === 'boolean' && t.isContentEditable));
     if (!typing && window.GameAudio && GameAudio.toggleMuted) {
       GameAudio.toggleMuted();
+      cancelHitSpeech();
       syncSoundToggles();
       e.preventDefault();
       return;
@@ -255,6 +659,7 @@ window.addEventListener('keyup', e => { keys[e.code] = false; });
 function closeModals() {
   modalHelp.classList.add('hidden');
   modalCredits.classList.add('hidden');
+  resetHitFeedbackState();
 }
 
 function closeNavMenu() {
@@ -268,6 +673,7 @@ function syncTopNav() {
 
 /** Return to arena picker: leave game, clear world, reset selection */
 function goHome() {
+  resetHitFeedbackState();
   closeModals();
   closeNavMenu();
   gameActive = false;
@@ -399,6 +805,7 @@ function onSoundToggleClick(e) {
   e.stopPropagation();
   if (e.currentTarget === hudSoundToggle) e.preventDefault();
   if (window.GameAudio && GameAudio.toggleMuted) GameAudio.toggleMuted();
+  cancelHitSpeech();
   syncSoundToggles();
 }
 
@@ -409,6 +816,7 @@ function onSoundToggleClick(e) {
 controls.addEventListener('lock', () => {
   try {
     hideLockErrBanner();
+    wantReLockAfterWrongModal = false;
     huntScreen.classList.add('hidden');
     gameActive = true;
     hudEl.classList.remove('hidden');
@@ -424,6 +832,11 @@ controls.addEventListener('unlock', () => {
   gameActive = false;
   if (window.GameAudio) GameAudio.onLeavePlay();
   if (!roundEndEl.classList.contains('hidden')) {
+    syncTopNav();
+    syncSoundToggles();
+    return;
+  }
+  if (hitFeedbackModalVisible()) {
     syncTopNav();
     syncSoundToggles();
     return;
@@ -447,6 +860,30 @@ controls.addEventListener('unlock', () => {
 
 syncTopNav();
 syncSoundToggles();
+
+if (hitFeedbackOk) {
+  hitFeedbackOk.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (hitFeedbackOk.disabled) return;
+    finishWrongModalAndResume();
+  });
+}
+[menuCoachBtn, huntCoachBtn, pauseCoachBtn].forEach((el) => {
+  if (!el) return;
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    cycleHitConfirmMode();
+  });
+});
+canvas.addEventListener('click', () => {
+  if (!wantReLockAfterWrongModal) return;
+  if (!window.isSecureContext) return;
+  if (roundEndEl.classList.contains('hidden') === false) return;
+  try {
+    controls.lock();
+  } catch (err) {}
+});
+syncCoachButtons();
 
 // ═══════════════════════════════════════════
 //  ENV BUILDER HELPERS
@@ -897,6 +1334,8 @@ function makeLabel(text, hexColor) {
 }
 
 function spawnEntities() {
+  resetHitFeedbackState();
+  shotsThisRound = 0;
   clearEntities();
   const rule = currentRule;
   const count = 14 + Math.floor(Math.random() * 5);
@@ -1094,6 +1533,7 @@ function spawnShotTracer(start, end) {
 
 window.addEventListener('mousedown', (e) => {
   if (e.button !== 0) return;
+  if (feedbackPaused) return;
   if (!gameActive || !controls.isLocked) return;
 
   if (window.GameAudio) GameAudio.shoot();
@@ -1123,18 +1563,24 @@ window.addEventListener('mousedown', (e) => {
 
   if (!ent) return;
 
+  const coachThis = coachAppliesThisShot();
+  shotsThisRound++;
+
   if (ent.isMatch) {
     score += 10; matchLeft--;
     ent.dying = true; ent.dyingT = 0;
     doFlash('#00ff88', 0.28);
     if (window.GameAudio) GameAudio.hitCorrect();
     updateHUD();
-    if (matchLeft <= 0) setTimeout(endRound, 700);
+    if (matchLeft <= 0) {
+      scheduleEndRoundAfterCorrectCoach(ent, coachThis);
+    }
   } else {
     score = Math.max(0, score - 5);
     doFlash('#ff2200', 0.42);
     if (window.GameAudio) GameAudio.hitWrong();
     updateHUD();
+    onHitWrongAfterScoring(ent, coachThis);
   }
 });
 
@@ -1145,6 +1591,10 @@ function doFlash(color, alpha) {
 }
 
 function endRound() {
+  if (pendingEndRoundTimer) {
+    clearTimeout(pendingEndRoundTimer);
+    pendingEndRoundTimer = null;
+  }
   if (window.GameAudio) GameAudio.roundWin();
   gameActive = false;
   hudEl.classList.add('hidden'); vigEl.classList.add('hidden'); pausedEl.classList.add('hidden');
@@ -1253,9 +1703,10 @@ const playerObj = controls.getObject();
   const dt = Math.min(clock.getDelta(), 0.05);
   const t  = clock.elapsedTime;
   const entXZLim = Math.min(29.8, envSpawnHalfXZ - 1.2);
+  const freeze = feedbackPaused;
 
   // ── Player movement ──
-  if (gameActive && controls.isLocked) {
+  if (!freeze && gameActive && controls.isLocked) {
     const MV = 6;
     const fwd = new THREE.Vector3();
     if (keys['KeyW']||keys['ArrowUp'])    fwd.z -= 1;
@@ -1279,6 +1730,7 @@ const playerObj = controls.getObject();
     }
   }
 
+  if (!freeze) {
   // ── Entity update: motion + wall, then pairwise XZ, then labels ──
   entities.forEach(ent => {
     if (!ent.alive) return;
@@ -1471,6 +1923,7 @@ const playerObj = controls.getObject();
       l.visible = playerObj.position.distanceTo(m.position) < 20;
     }
   });
+  }
 
   renderer.render(scene, camera);
 })();
@@ -1484,7 +1937,7 @@ document.addEventListener(
     if (e.target === canvas && gameActive && controls.isLocked) return;
     if (
       e.target.closest(
-        '#hud-sound-toggle, #menu-sound-toggle, #hunt-sound-toggle, #pause-sound-toggle'
+        '#hud-sound-toggle, #menu-sound-toggle, #hunt-sound-toggle, #pause-sound-toggle, #menu-coach-btn, #hunt-coach-btn, #pause-coach-btn'
       )
     )
       return;

@@ -38,7 +38,7 @@
   #nav-dropdown button:hover { background: #f0fcff; color: #008799; }
 
   .modal-overlay {
-    position: fixed; inset: 0; z-index: 45;
+    position: fixed; inset: 0; z-index: 46;
     background: rgba(30,40,55,0.45);
     display: flex; align-items: center; justify-content: center;
     padding: 1.5rem;
@@ -59,6 +59,53 @@
     border-radius: 6px; cursor: pointer; font-size: 1.1rem; line-height: 1; color: #556;
   }
   .modal-close:hover { background: #dde4ef; color: #223; }
+
+  /* Hit coach: true viewport center + large readable copy (matches spoken script) */
+  #modal-hit-feedback.modal-overlay {
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: clamp(0.75rem, 3vw, 1.5rem);
+  }
+  #modal-hit-feedback .modal-card--hit {
+    max-width: min(52rem, 96vw);
+    width: 100%;
+    margin: auto;
+    flex-shrink: 0;
+    align-self: center;
+    padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1.25rem, 4vw, 2.75rem);
+  }
+  #modal-hit-feedback .modal-card--hit h2 {
+    font-size: clamp(1.35rem, 4vw, 2rem);
+    margin-bottom: clamp(1rem, 2.5vw, 1.35rem);
+    text-align: center;
+  }
+  #modal-hit-feedback .modal-card--hit .btn {
+    font-size: clamp(1rem, 2.5vw, 1.15rem);
+    padding: 0.75rem 2rem;
+    letter-spacing: 0.12em;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    min-width: min(12rem, 80vw);
+  }
+  #modal-hit-feedback .modal-card--hit .hit-feedback-body {
+    font-size: clamp(1.35rem, 3.8vw, 2.05rem);
+    line-height: 1.45;
+    white-space: pre-line;
+    margin-bottom: clamp(1rem, 2.5vw, 1.35rem);
+    text-align: center;
+    font-weight: 600;
+    color: #1e2430;
+  }
+  #modal-hit-feedback .modal-card--hit .hit-feedback-hint {
+    font-size: clamp(0.95rem, 2.2vw, 1.1rem);
+    color: #5a6578;
+    margin-bottom: 1.25rem;
+    line-height: 1.45;
+    text-align: center;
+  }
 
   .screen {
     position: fixed; inset: 0;
@@ -93,6 +140,18 @@
     display: flex;
     justify-content: center;
     align-items: center;
+  }
+  .menu-settings-row--stack,
+  .hunt-settings-row--stack,
+  .paused-settings-row--stack {
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+  .coach-menu-btn {
+    letter-spacing: 0.1em;
+    padding: 0.48rem 1.2rem;
+    font-size: 0.72rem;
+    max-width: min(92vw, 22rem);
   }
   .menu-settings-row { margin-bottom: 1.5rem; }
   .hunt-settings-row { margin-bottom: 1rem; }
@@ -335,6 +394,30 @@
     line-height: 1.35;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
   }
+
+  .hud-coach-toast {
+    position: absolute;
+    z-index: 14;
+    left: 50%;
+    top: 50%;
+    bottom: auto;
+    transform: translate(-50%, -50%);
+    max-width: min(92vw, 36rem);
+    padding: clamp(0.75rem, 2.5vw, 1.25rem) clamp(1rem, 3vw, 1.75rem);
+    text-align: center;
+    font-size: clamp(1.1rem, 3.2vw, 1.65rem);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+    color: #f4fbff;
+    background: rgba(8, 18, 32, 0.94);
+    border: 1px solid rgba(120, 200, 255, 0.55);
+    border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
+  }
+  .hud-coach-toast.hidden { display: none !important; }
 
   @media (max-width: 520px) {
     #hud-left.hud-points {

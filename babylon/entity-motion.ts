@@ -1,5 +1,5 @@
 import type { Scene } from '@babylonjs/core';
-import { Vector3 } from '@babylonjs/core';
+import { PBRMaterial, Vector3 } from '@babylonjs/core';
 
 import { xzOverlapSeparation } from '@lib/entity-collision-2d.js';
 import {
@@ -50,6 +50,7 @@ export type GameEntity = SolidEntityRecord & {
   rotVx: number;
   rotVy: number;
   rotVz: number;
+  glowPhase: number; // random offset for emissive pulse
 };
 
 export type SpawnGameOptions = {
@@ -132,6 +133,7 @@ export function spawnGameEntities(scene: Scene, opts: SpawnGameOptions): GameEnt
       rotVx: (rng() - 0.5) * 2.5,
       rotVy: (rng() - 0.5) * 2.5,
       rotVz: (rng() - 0.5) * 2.5,
+      glowPhase: rng() * Math.PI * 2,
     };
 
     if (moveMode === 'drift') {
@@ -214,6 +216,15 @@ export function updateGameEntities(params: {
         disposeSolidEntity(ent);
       }
       continue;
+    }
+
+    // Emissive glow pulse — subtle breathing effect on each solid
+    const mat = ent.body.material as PBRMaterial | null;
+    if (mat && 'emissiveColor' in mat) {
+      const pulse = 0.08 + Math.abs(Math.sin(t * 1.4 + ent.glowPhase)) * 0.18;
+      mat.emissiveColor.scaleToRef(1, mat.emissiveColor); // keep colour
+      const base = mat.albedoColor;
+      mat.emissiveColor.set(base.r * pulse, base.g * pulse, base.b * pulse);
     }
 
     if (ent.moveMode === 'orbit') {

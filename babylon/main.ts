@@ -1,10 +1,12 @@
 import {
+  DefaultRenderingPipeline,
   Engine,
   CubeTexture,
   ImageProcessingConfiguration,
   Scene,
   UniversalCamera,
   Vector3,
+  SSAO2RenderingPipeline,
 } from '@babylonjs/core';
 /** Side effect: patches Scene picking (`createPickingRay`, `pickWithRay`). Without this, treeshaking can drop Culling/ray and those methods throw `_WarnImport("Ray")`. */
 import '@babylonjs/core/Culling/ray';
@@ -101,6 +103,40 @@ if (mouseInput && typeof mouseInput.angularSensibility === 'number') {
   mouseInput.angularSensibility = 3400;
 }
 scene.activeCamera = camera;
+
+// ── Post-processing pipeline ──────────────────────────────────────────────────
+const renderPipeline = new DefaultRenderingPipeline('main', true, scene, [camera]);
+
+// FXAA anti-aliasing
+renderPipeline.fxaaEnabled = true;
+renderPipeline.fxaa.samples = 4;
+
+// Bloom — makes emissive solids & torches glow
+renderPipeline.bloomEnabled = true;
+renderPipeline.bloomThreshold = 0.55;
+renderPipeline.bloomWeight = 0.42;
+renderPipeline.bloomKernel = 64;
+renderPipeline.bloomScale = 0.5;
+
+// Chromatic aberration — subtle lens realism
+renderPipeline.chromaticAberrationEnabled = true;
+renderPipeline.chromaticAberration.aberrationAmount = 0.8;
+renderPipeline.chromaticAberration.radialIntensity = 1.0;
+
+// Grain — disabled
+renderPipeline.grainEnabled = false;
+
+// Depth of field — very subtle, cinematic
+renderPipeline.depthOfFieldEnabled = false; // keep off by default, toggle if wanted
+
+// SSAO2 — contact shadows / ambient occlusion
+const ssao = new SSAO2RenderingPipeline('ssao', scene, { ssaoRatio: 0.5, blurRatio: 0.5 }, [camera]);
+ssao.radius = 1.8;
+ssao.totalStrength = 0.65;
+ssao.base = 0.12;
+ssao.maxZ = 80;
+ssao.minZAspect = 0.2;
+// ─────────────────────────────────────────────────────────────────────────────
 
 let arena: ArenaBuildResult | null = null;
 let entities: ReturnType<typeof spawnGameEntities> = [];

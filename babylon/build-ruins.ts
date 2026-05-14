@@ -19,7 +19,7 @@ import {
   addWallBox,
   addWallBoxRotY,
   makeArenaBuildResult,
-  setAzureBackgroundExp2Fog,
+  setBackgroundExp2FogCustom,
   type ArenaBuildResult,
 } from './arena-shared';
 import { palettePick, propColorDrift } from './env-colors';
@@ -36,7 +36,8 @@ export function buildRuinsScene(scene: Scene): ArenaBuildResult {
   const wallBoxes: WallAABB[] = [];
   const envSpawnHalfXZ = RUINS_ENV_SPAWN_HALF_XZ;
 
-  setAzureBackgroundExp2Fog(scene, 0.0058);
+  // Dusty amber/sunset atmosphere — distinct from the azure sky of forest
+  setBackgroundExp2FogCustom(scene, 0xd4a96a, 0xc89450, 0.006);
 
   addAmbientFill(scene, lights, 0xf0e4d4, 0.66);
   addDirFromPosition(scene, lights, 0xffcc99, 0.72, 10, 22, 5);

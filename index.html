@@ -27,9 +27,10 @@
     <h2 id="help-title">HELP</h2>
     <p><strong>Solids Hunter</strong> is a first-person hunt: each round you get a <strong>boolean rule</strong> (sometimes simple, sometimes with <strong>AND</strong>, <strong>OR</strong>, or <strong>NOT</strong>). Only raycast-shoot solids that satisfy the rule.</p>
     <ul>
-      <li><strong>Move:</strong> WASD or arrow keys</li>
-      <li><strong>Look:</strong> mouse (pointer lock after you start)</li>
-      <li><strong>Shoot:</strong> left-click on a shape</li>
+      <li><strong>Move:</strong> WASD / arrow keys, or gamepad left stick</li>
+      <li><strong>Look:</strong> mouse (pointer lock after you start), or gamepad right stick</li>
+      <li><strong>Shoot:</strong> left-click, or gamepad RT/R2</li>
+      <li><strong>Gamepad:</strong> A starts/resumes; Start/Menu pauses</li>
       <li><strong>Rule:</strong> shown in full on the hunt screen; during play it stays at the <strong>top center</strong> of the HUD</li>
       <li><strong>Sound:</strong> <strong>M</strong> toggles mute anytime; arena / rule / pause screens also have a <strong>Sound: ON/OFF</strong> button; in-game, top-left icon or <strong>M</strong> (mute also silences spoken coach lines)</li>
       <li><strong>Hit coach:</strong> arena / rule / pause — cycle <strong>Coach: OFF / VOICE / MODAL</strong>. Wrong hits: voice-only pauses targets briefly with a subtitle; modal+voice unlocks the cursor until you confirm. Correct hits stay instant; coach adds optional spoken tips. Speech picks the best available <strong>English</strong> voice from your browser (see <a href="https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesisUtterance/voice" target="_blank" rel="noopener">MDN</a>) and reads a <strong>short</strong> line aloud (like <a href="https://github.com/carlok/agility-trainer" target="_blank" rel="noopener">Agility Trainer</a>); the modal still shows the full text. Set <code>localStorage.solidsHunterHitConfirmN</code> to limit coaching to the first N hits per round (0 = unlimited).</li>
@@ -138,7 +139,7 @@
       <div class="val" id="targets-el">0</div>
     </div>
   </div>
-  <div id="hud-hint">WASD / ARROWS · MOUSE LOOK · CLICK TO SHOOT · <strong>M</strong> OR 🔊 TOP-LEFT = SOUND · ESC PAUSE</div>
+  <div id="hud-hint">WASD / ARROWS OR LEFT STICK · MOUSE OR RIGHT STICK · CLICK OR RT/R2 · <strong>M</strong> / 🔊 SOUND · ESC / START PAUSE</div>
   <div id="hud-coach-toast" class="hud-coach-toast hidden" role="status" aria-live="polite"></div>
 </div>
 

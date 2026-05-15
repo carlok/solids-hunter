@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { Color3 } from '@babylonjs/core';
 
-import { color3ToRgbNumber, envTintHex, wallColorInPalette } from '../../babylon/env-colors';
+import {
+  color3ToRgbNumber,
+  envTintHex,
+  palettePick,
+  propColorDrift,
+  wallColorInPalette,
+} from '../../babylon/env-colors';
 
 describe('color3ToRgbNumber', () => {
   it('packs white and black', () => {
@@ -31,5 +37,31 @@ describe('wallColorInPalette', () => {
     expect(typeof a).toBe('number');
     expect(typeof b).toBe('number');
     expect(a).not.toBe(b);
+  });
+});
+
+describe('propColorDrift', () => {
+  it('is stable for the same base, salt, and spread', () => {
+    expect(propColorDrift(0x446633, 12, 0.2)).toBe(propColorDrift(0x446633, 12, 0.2));
+  });
+
+  it('keeps channels clamped with wide spread', () => {
+    const color = propColorDrift(0x0101fe, 99, 1);
+    expect(color).toBeGreaterThanOrEqual(0);
+    expect(color).toBeLessThanOrEqual(0xffffff);
+  });
+});
+
+describe('palettePick', () => {
+  it('returns zero for empty or single-entry palettes', () => {
+    expect(palettePick(4, 0)).toBe(0);
+    expect(palettePick(4, 1)).toBe(0);
+  });
+
+  it('returns an in-range deterministic index', () => {
+    const picked = palettePick(123, 5);
+    expect(picked).toBe(palettePick(123, 5));
+    expect(picked).toBeGreaterThanOrEqual(0);
+    expect(picked).toBeLessThan(5);
   });
 });

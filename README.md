@@ -75,9 +75,10 @@ If WAVs fail to decode, the game falls back to short synthesized tones where imp
 
 ## Controls
 
-- **Move:** WASD or arrow keys  
-- **Look:** mouse (after pointer lock)  
-- **Shoot:** left-click — tracer from view to hit (or max range), then green/red flash on targets.  
+- **Move:** WASD / arrow keys, or gamepad left stick  
+- **Look:** mouse (after pointer lock), or gamepad right stick  
+- **Shoot:** left-click or gamepad RT/R2 — tracer from view to hit (or max range), then green/red flash on targets.  
+- **Gamepad:** A / bottom face button starts or resumes, Start/Menu pauses, RT/R2 shoots.
 - **Pause:** Esc  
 - **Menu:** top-left hamburger  
 

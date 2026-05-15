@@ -1,4 +1,4 @@
-import type { Scene, UniversalCamera } from '@babylonjs/core';
+import type { Ray, Scene, UniversalCamera } from '@babylonjs/core';
 /** Ensures Scene picking is patched in this chunk (same as main.ts); avoids treeshook stubs that throw. */
 import '@babylonjs/core/Culling/ray';
 
@@ -39,6 +39,10 @@ export type BabylonShootContext = {
   onRoundComplete: () => void;
 };
 
+export type BabylonShooter = {
+  shoot: () => boolean;
+};
+
 function updateHud(runtime: BabylonGameRuntime, hud: BabylonShootHud): void {
   hud.scoreEl.textContent = String(runtime.score);
   hud.targetsEl.textContent = String(runtime.matchLeft);
@@ -52,6 +56,12 @@ function flash(hud: BabylonShootHud, color: string, alpha: number): void {
   }, 180);
 }
 
+export function createCenterShotRay(camera: UniversalCamera): Ray {
+  const ray = camera.getForwardRay(MAX_TRACE + MUZZLE_FORWARD + 4);
+  ray.length = MAX_TRACE + MUZZLE_FORWARD + 4;
+  return ray;
+}
+
 export function attachBabylonShooting(options: {
   scene: Scene;
   canvas: HTMLCanvasElement;
@@ -59,7 +69,7 @@ export function attachBabylonShooting(options: {
   shootContext: BabylonShootContext;
   hud: BabylonShootHud;
   runtime: BabylonGameRuntime;
-}): void {
+}): BabylonShooter {
   const { scene, canvas, camera, shootContext, hud, runtime } = options;
 
   updateHud(runtime, hud);
@@ -71,26 +81,16 @@ export function attachBabylonShooting(options: {
   };
   window.addEventListener('mousedown', onRoundEndMouseDown, true);
 
-  const onShootMouseDown = (e: MouseEvent): void => {
-    if (e.button !== 0) return;
+  const shoot = (): boolean => {
+    if (runtime.roundEnded) return false;
 
-    if (runtime.roundEnded) return;
-
-    if (gameFeedback.paused) return;
-    if (document.pointerLockElement !== canvas) return;
+    if (gameFeedback.paused) return false;
 
     GameAudio.shoot();
 
     const entities = shootContext.getEntities();
 
-    const engine = scene.getEngine();
-    const ray = scene.createPickingRay(
-      engine.getRenderWidth() * 0.5,
-      engine.getRenderHeight() * 0.5,
-      null,
-      camera,
-    );
-    ray.length = MAX_TRACE + MUZZLE_FORWARD + 4;
+    const ray = createCenterShotRay(camera);
     const dir = ray.direction.clone();
     dir.normalize();
     const muzzle = ray.origin.clone();
@@ -135,7 +135,7 @@ export function attachBabylonShooting(options: {
     if (!ent) {
       const coachThis = coachAppliesThisShot(runtime.shotsThisRound);
       onHitMissAfterScoring(coachThis);
-      return;
+      return true;
     }
 
     const coachThis = coachAppliesThisShot(runtime.shotsThisRound);
@@ -167,8 +167,18 @@ export function attachBabylonShooting(options: {
       updateHud(runtime, hud);
       onHitWrongAfterScoring(ent, coachThis);
     }
+    return true;
+  };
+
+  const onShootMouseDown = (e: MouseEvent): void => {
+    if (e.button !== 0) return;
+
+    if (document.pointerLockElement !== canvas) return;
+    shoot();
   };
 
   /** Capture so HUD/overlay does not eat the click; center-ray pick matches the crosshair under pointer lock. */
   canvas.addEventListener('mousedown', onShootMouseDown, true);
+
+  return { shoot };
 }

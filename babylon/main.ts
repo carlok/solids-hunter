@@ -34,6 +34,13 @@ import {
   xzPlayHalfLimit,
 } from './entity-motion';
 import { GameAudio } from './game-audio';
+import {
+  EMPTY_GAMEPAD_INPUT,
+  firstUsableGamepad,
+  gamepadButtonJustPressed,
+  readGamepadInput,
+  type GamepadInputFrame,
+} from './gamepad-input';
 import { attachBabylonShooting } from './shoot-input';
 import { hitsEntity, hitsWall } from './wall-collision';
 
@@ -145,6 +152,7 @@ let selectedEnv: ArenaName | null = null;
 let gameActive = false;
 const keys: Record<string, boolean> = {};
 let elapsedTime = 0;
+let previousGamepadInput: GamepadInputFrame = EMPTY_GAMEPAD_INPUT;
 
 const shootRuntime = {
   score: 0,
@@ -176,7 +184,7 @@ function clearWorld(): void {
 }
 
 function syncTopNav(): void {
-  topNav.classList.toggle('hidden', document.pointerLockElement === canvas && gameActive);
+  topNav.classList.toggle('hidden', gameActive);
 }
 
 function closeModals(): void {
@@ -248,7 +256,7 @@ function showHuntScreen(): void {
   syncSoundToggles();
 }
 
-attachBabylonShooting({
+const shooter = attachBabylonShooting({
   scene,
   canvas,
   camera,
@@ -403,6 +411,32 @@ function tryLockPointer(): void {
   canvas.requestPointerLock();
 }
 
+function enterPlayMode(): void {
+  hideLockErrBanner();
+  onPointerLockAcquired();
+  huntScreen.classList.add('hidden');
+  gameActive = true;
+  hudEl.classList.remove('hidden');
+  vigEl.classList.remove('hidden');
+  pausedEl.classList.add('hidden');
+  syncTopNav();
+  syncSoundToggles();
+  GameAudio.onEnterPlay();
+}
+
+function pauseGamepadPlay(): void {
+  if (!gameActive) return;
+  if (!roundEndEl.classList.contains('hidden')) return;
+  if (isHitFeedbackModalVisible()) return;
+  gameActive = false;
+  GameAudio.onLeavePlay();
+  pausedEl.classList.remove('hidden');
+  hudEl.classList.add('hidden');
+  vigEl.classList.add('hidden');
+  syncTopNav();
+  syncSoundToggles();
+}
+
 req<HTMLButtonElement>('start-btn').addEventListener('click', () => {
   tryLockPointer();
 });
@@ -473,10 +507,46 @@ void GameAudio.load().catch(() => { });
 engine.runRenderLoop(() => {
   const dt = Math.min(engine.getDeltaTime() / 1000, 0.05);
   elapsedTime += dt;
+  const gamepads = navigator.getGamepads?.() ?? [];
+  const gamepadInput = readGamepadInput(firstUsableGamepad(gamepads));
+  const gamepadPrimaryPressed = gamepadButtonJustPressed(
+    gamepadInput,
+    previousGamepadInput,
+    'primary',
+  );
+  const gamepadMenuPressed = gamepadButtonJustPressed(gamepadInput, previousGamepadInput, 'menu');
+  const gamepadShootPressed = gamepadButtonJustPressed(gamepadInput, previousGamepadInput, 'shoot');
+
+  if (gamepadInput.connected) {
+    if (gamepadPrimaryPressed) {
+      if (!roundEndEl.classList.contains('hidden')) {
+        roundEndEl.classList.add('hidden');
+        showHuntScreen();
+      } else if (!huntScreen.classList.contains('hidden') || !pausedEl.classList.contains('hidden')) {
+        enterPlayMode();
+      }
+    }
+    if (gamepadMenuPressed && gameActive) {
+      if (document.pointerLockElement === canvas) document.exitPointerLock();
+      else pauseGamepadPlay();
+    }
+    if (gamepadShootPressed && gameActive) {
+      shooter.shoot();
+    }
+  }
 
   const freeze = gameFeedback.paused;
-  if (!freeze && gameActive && document.pointerLockElement === canvas && arena) {
+  if (!freeze && gameActive && arena) {
     const MV = 3.85;
+    const GAMEPAD_LOOK = 1.25;
+    if (gamepadInput.connected) {
+      camera.rotation.y += gamepadInput.lookX * GAMEPAD_LOOK * dt;
+      camera.rotation.x += gamepadInput.lookY * GAMEPAD_LOOK * dt;
+      const pitchLimit = (80 * Math.PI) / 180;
+      camera.rotation.x = Math.min(pitchLimit, Math.max(-pitchLimit, camera.rotation.x));
+      camera.rotation.z = 0;
+    }
+
     const forward = camera.getDirection(new Vector3(0, 0, 1));
     forward.y = 0;
     if (forward.lengthSquared() < 1e-10) forward.set(0, 0, 1);
@@ -485,26 +555,33 @@ engine.runRenderLoop(() => {
 
     let mx = 0;
     let mz = 0;
-    if (keys['KeyW'] || keys['ArrowUp']) {
+    const keyboardMove = document.pointerLockElement === canvas;
+    if (keyboardMove && (keys['KeyW'] || keys['ArrowUp'])) {
       mx += forward.x;
       mz += forward.z;
     }
-    if (keys['KeyS'] || keys['ArrowDown']) {
+    if (keyboardMove && (keys['KeyS'] || keys['ArrowDown'])) {
       mx -= forward.x;
       mz -= forward.z;
     }
-    if (keys['KeyA'] || keys['ArrowLeft']) {
+    if (keyboardMove && (keys['KeyA'] || keys['ArrowLeft'])) {
       mx -= right.x;
       mz -= right.z;
     }
-    if (keys['KeyD'] || keys['ArrowRight']) {
+    if (keyboardMove && (keys['KeyD'] || keys['ArrowRight'])) {
       mx += right.x;
       mz += right.z;
     }
+    let analogMove = 1;
+    if (gamepadInput.connected) {
+      mx += forward.x * gamepadInput.moveForward + right.x * gamepadInput.moveX;
+      mz += forward.z * gamepadInput.moveForward + right.z * gamepadInput.moveX;
+      analogMove = Math.min(1, Math.hypot(gamepadInput.moveForward, gamepadInput.moveX));
+    }
     const len = Math.hypot(mx, mz);
     if (len > 1e-10) {
-      mx = (mx / len) * MV * dt;
-      mz = (mz / len) * MV * dt;
+      mx = (mx / len) * MV * analogMove * dt;
+      mz = (mz / len) * MV * analogMove * dt;
       GameAudio.maybeFootstep(dt, true);
       const bound = xzPlayHalfLimit(arena.envSpawnHalfXZ);
       const cur = camera.position;
@@ -546,6 +623,7 @@ engine.runRenderLoop(() => {
     });
   }
   scene.render();
+  previousGamepadInput = gamepadInput;
 });
 
 window.addEventListener('resize', () => {

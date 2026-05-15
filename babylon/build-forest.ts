@@ -11,8 +11,11 @@ import {
 } from '@babylonjs/core';
 
 import {
+  addBoxRotated,
   addDirFromPosition,
   addDamageDecals,
+  addDecorativeArch,
+  addDecorativeColumn,
   addDustMotes,
   addFloor,
   addHemisphericFillSplit,
@@ -104,7 +107,7 @@ export function buildForestScene(scene: Scene): ArenaBuildResult {
     const trunkSalt = x * 131 + z * 97 + h * 3.1;
     const trunk = MeshBuilder.CreateCylinder(
       `trunk_${x}_${z}`,
-      { height: h, diameterTop: r * 2, diameterBottom: rb * 2, tessellation: 7 },
+      { height: h, diameterTop: r * 2, diameterBottom: rb * 2, tessellation: 9 },
       scene,
     );
     trunk.position.set(x, h / 2, z);
@@ -124,7 +127,7 @@ export function buildForestScene(scene: Scene): ArenaBuildResult {
       const leafSalt = x * 127 + z * 89 + off * 11 + i * 41;
       const canopy = MeshBuilder.CreateCylinder(
         `canopy_${x}_${z}_${i}`,
-        { height: coneH, diameterTop: 0, diameterBottom: bottomR * 2, tessellation: 7 },
+        { height: coneH, diameterTop: 0, diameterBottom: bottomR * 2, tessellation: 9 },
         scene,
       );
       canopy.position.set(x, h - 0.5 + off + coneH / 2, z);
@@ -161,6 +164,54 @@ export function buildForestScene(scene: Scene): ArenaBuildResult {
     applyRandomVertexGradient(rock, propColorDrift(rk, x * 83 + z * 59, 0.12));
     meshes.push(rock);
     pushWallBoxCenterSize(wallBoxes, x, 0.4, z, rockSize * 2.2, rockSize * 2.2, rockSize * 2.2);
+  }
+
+  for (const [x, z, ry] of [
+    [-18, 22, 0.25],
+    [18, -22, -0.45],
+    [25, 16, 0.9],
+  ] as const) {
+    addDecorativeArch(scene, meshes, wallBoxes, x, z, {
+      width: 5.6,
+      height: 3.1,
+      depth: 0.62,
+      color: propColorDrift(0x3b2618, x * 31 + z * 17, 0.16),
+      role: 'trunk',
+      ry,
+      segments: 4,
+    });
+  }
+
+  for (const [x, z, ry] of [
+    [-24, 8, 0.5],
+    [19, 24, -0.35],
+    [3, -26, 1.15],
+  ] as const) {
+    addDecorativeColumn(scene, meshes, wallBoxes, x, z, {
+      radius: 0.55,
+      height: 0.9 + Math.abs(x + z) * 0.006,
+      color: propColorDrift(0x352014, x * 41 + z * 29, 0.18),
+      role: 'trunk',
+      tessellation: 9,
+      taper: 0.3,
+      broken: true,
+      ry,
+    });
+    addBoxRotated(
+      scene,
+      meshes,
+      4.8,
+      0.46,
+      0.62,
+      propColorDrift(0x2a1810, x * 53 + z * 37, 0.14),
+      x + Math.cos(ry) * 2.1,
+      0.58,
+      z + Math.sin(ry) * 2.1,
+      0.12,
+      ry,
+      -0.08,
+      'trunk',
+    );
   }
 
   addDamageDecals(scene, meshes, textures, [

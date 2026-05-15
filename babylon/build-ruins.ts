@@ -10,6 +10,8 @@ import {
   addAmbientFill,
   addBox,
   addDamageDecals,
+  addDecorativeArch,
+  addDecorativeColumn,
   addDirFromPosition,
   addDustMotes,
   addFloor,
@@ -17,6 +19,7 @@ import {
   addSkySphere,
   addSoftClouds,
   addSunLight,
+  addTrilith,
   addWallBox,
   addWallBoxRotY,
   makeArenaBuildResult,
@@ -92,10 +95,19 @@ export function buildRuinsScene(scene: Scene): ArenaBuildResult {
     const ch = 1.5 + Math.random() * 4;
     // Mix grey and brown for pillars, with random Y rotation and height jitter
     const isGrey = Math.random() > 0.5;
-    const pLo = isGrey ? 0x444444 : 0x442818;
-    const pHi = isGrey ? 0x6a6a6a : 0x6a4838;
+    const pCol = propColorDrift(isGrey ? 0x565656 : 0x5a3826, x * 71 + z * 43 + ch, 0.13);
     const ry = (Math.random() - 0.5) * 0.4;
-    addWallBox(scene, meshes, wallBoxes, 1.2, ch, 1.2, pLo, pHi, x, ch / 2, z, ry);
+    addDecorativeColumn(scene, meshes, wallBoxes, x, z, {
+      radius: 0.56,
+      height: ch,
+      color: pCol,
+      role: 'stone',
+      tessellation: 12,
+      taper: 0.12,
+      broken: ch < 3.2 || Math.random() > 0.55,
+      collides: true,
+      ry,
+    });
     if (Math.random() > 0.45) {
       const capX = x + (Math.random() - 0.5) * 0.4;
       const capZ = z + (Math.random() - 0.5) * 0.4;
@@ -119,6 +131,33 @@ export function buildRuinsScene(scene: Scene): ArenaBuildResult {
       );
     }
   }
+
+  for (const [x, z, ry] of [
+    [-28, 18, -0.45],
+    [27, -17, 0.35],
+    [-2, -28, 0.08],
+    [26, 22, 0.78],
+  ] as const) {
+    addTrilith(scene, meshes, wallBoxes, x, z, {
+      width: 5.2,
+      height: 3.4 + Math.abs(x - z) * 0.018,
+      depth: 0.95,
+      color: propColorDrift(0x55463d, x * 19 + z * 23, 0.12),
+      role: 'stone',
+      ry,
+      broken: true,
+    });
+  }
+
+  addDecorativeArch(scene, meshes, wallBoxes, 4, 26, {
+    width: 6.6,
+    height: 4.1,
+    depth: 0.9,
+    color: propColorDrift(0x604f44, 401, 0.12),
+    role: 'stone',
+    ry: 0.2,
+    segments: 5,
+  });
 
   for (const [x, , z] of [
     [6, 0, -7],

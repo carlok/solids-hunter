@@ -394,6 +394,276 @@ export function addBoxRotated(
   return mesh;
 }
 
+function makePbrMat(
+  scene: Scene,
+  name: string,
+  color: number,
+  role: MaterialSurfaceRole,
+): PBRMaterial {
+  const mat = new PBRMaterial(name, scene);
+  applyAlbedoHex(mat, color);
+  stylePbrSurfaceMaterial(mat, role);
+  return mat;
+}
+
+function addDecorativeCylinder(
+  scene: Scene,
+  meshes: Mesh[],
+  radiusTop: number,
+  radiusBottom: number,
+  height: number,
+  color: number,
+  x: number,
+  y: number,
+  z: number,
+  tessellation: number,
+  role: MaterialSurfaceRole,
+  ry = 0,
+): Mesh {
+  const mesh = MeshBuilder.CreateCylinder(
+    `decorCyl_${meshes.length}`,
+    {
+      height,
+      diameterTop: radiusTop * 2,
+      diameterBottom: radiusBottom * 2,
+      tessellation,
+    },
+    scene,
+  );
+  mesh.position.set(x, y, z);
+  mesh.rotation.y = ry;
+  mesh.material = makePbrMat(scene, `decorCylMat_${meshes.length}`, color, role);
+  applyRandomVertexGradient(mesh, color);
+  meshes.push(mesh);
+  return mesh;
+}
+
+export type DecorativeColumnOptions = {
+  radius?: number;
+  height?: number;
+  color?: number;
+  role?: MaterialSurfaceRole;
+  tessellation?: number;
+  taper?: number;
+  broken?: boolean;
+  collides?: boolean;
+  ry?: number;
+};
+
+export function addDecorativeColumn(
+  scene: Scene,
+  meshes: Mesh[],
+  wallBoxes: WallAABB[],
+  x: number,
+  z: number,
+  options: DecorativeColumnOptions = {},
+): Mesh[] {
+  const radius = options.radius ?? 0.7;
+  const height = options.height ?? 4.5;
+  const color = options.color ?? 0x5a5148;
+  const role = options.role ?? 'stone';
+  const tessellation = options.tessellation ?? 12;
+  const taper = options.taper ?? 0.15;
+  const ry = options.ry ?? 0;
+  const out: Mesh[] = [];
+
+  out.push(addDecorativeCylinder(scene, meshes, radius * 1.28, radius * 1.42, 0.34, color, x, 0.17, z, tessellation, role, ry));
+  out.push(addDecorativeCylinder(scene, meshes, radius * 0.95, radius * (1 + taper), height, color, x, 0.34 + height * 0.5, z, tessellation, role, ry));
+  const topY = 0.34 + height;
+  out.push(addDecorativeCylinder(scene, meshes, radius * 1.32, radius * 1.08, 0.34, color, x, topY + 0.17, z, tessellation, role, ry));
+
+  if (options.broken) {
+    out.push(addBoxRotated(scene, meshes, radius * 1.5, 0.34, radius * 0.82, envTintHex(color, x * 31 + z * 17), x + radius * 0.18, topY + 0.48, z - radius * 0.1, 0.08, ry + 0.28, -0.12, role));
+  }
+  if (options.collides) {
+    pushWallBoxCenterSize(wallBoxes, x, height * 0.5, z, radius * 2.4, height, radius * 2.4);
+  }
+  return out;
+}
+
+export type DecorativeArchOptions = {
+  width?: number;
+  height?: number;
+  depth?: number;
+  color?: number;
+  role?: MaterialSurfaceRole;
+  ry?: number;
+  segments?: number;
+  collides?: boolean;
+};
+
+export function addDecorativeArch(
+  scene: Scene,
+  meshes: Mesh[],
+  wallBoxes: WallAABB[],
+  x: number,
+  z: number,
+  options: DecorativeArchOptions = {},
+): Mesh[] {
+  const width = options.width ?? 6;
+  const height = options.height ?? 4.5;
+  const depth = options.depth ?? 0.8;
+  const color = options.color ?? 0x504638;
+  const role = options.role ?? 'stone';
+  const ry = options.ry ?? 0;
+  const segments = Math.max(8, (options.segments ?? 8) * 3);
+  const out: Mesh[] = [];
+  const sideW = Math.max(0.42, width * 0.16);
+  const supportH = height * 0.68;
+  const innerWidth = width - sideW * 1.35;
+  const halfInner = innerWidth * 0.5;
+  const archRise = Math.max(0.6, height - supportH - 0.25);
+
+  const localToWorld = (lx: number, lz: number): [number, number] => {
+    const c = Math.cos(ry);
+    const s = Math.sin(ry);
+    return [x + lx * c - lz * s, z + lx * s + lz * c];
+  };
+
+  for (const sx of [-1, 1]) {
+    const [wx, wz] = localToWorld(sx * (width * 0.5 - sideW * 0.5), 0);
+    out.push(addBox(scene, meshes, sideW, supportH, depth, envTintHex(color, sx * 37 + x), wx, supportH * 0.5, wz, ry, false, wallBoxes, 1, role));
+  }
+
+  const arcPath: Vector3[] = [];
+  for (let i = 0; i < segments; i++) {
+    const t = segments === 1 ? 0.5 : i / (segments - 1);
+    const lx = (t - 0.5) * innerWidth;
+    const y = supportH + Math.sin(t * Math.PI) * archRise;
+    const [wx, wz] = localToWorld(lx, 0);
+    arcPath.push(new Vector3(wx, y, wz));
+  }
+  const arc = MeshBuilder.CreateTube(
+    `decorArch_${meshes.length}`,
+    {
+      path: arcPath,
+      radius: Math.max(0.18, Math.min(depth * 0.48, sideW * 0.36)),
+      tessellation: Math.max(8, Math.min(14, Math.round(depth * 14))),
+    },
+    scene,
+  );
+  arc.material = makePbrMat(scene, `decorArchMat_${meshes.length}`, envTintHex(color, x * 13 + z * 7), role);
+  applyRandomVertexGradient(arc, color, 0.22);
+  meshes.push(arc);
+  out.push(arc);
+
+  for (const sx of [-1, 1]) {
+    const [wx, wz] = localToWorld(sx * halfInner, 0);
+    out.push(addBox(scene, meshes, sideW * 0.92, 0.42, depth * 1.1, envTintHex(color, sx * 43 + z), wx, supportH - 0.02, wz, ry, false, wallBoxes, 1, role));
+  }
+
+  if (options.collides) {
+    pushWallBoxCenterSize(wallBoxes, x, supportH * 0.5, z, width, supportH, depth);
+  }
+  return out;
+}
+
+export type TrilithOptions = {
+  width?: number;
+  height?: number;
+  depth?: number;
+  color?: number;
+  role?: MaterialSurfaceRole;
+  ry?: number;
+  broken?: boolean;
+  collides?: boolean;
+};
+
+export function addTrilith(
+  scene: Scene,
+  meshes: Mesh[],
+  wallBoxes: WallAABB[],
+  x: number,
+  z: number,
+  options: TrilithOptions = {},
+): Mesh[] {
+  const width = options.width ?? 5.2;
+  const height = options.height ?? 4.2;
+  const depth = options.depth ?? 0.9;
+  const color = options.color ?? 0x5a5148;
+  const role = options.role ?? 'stone';
+  const ry = options.ry ?? 0;
+  const out: Mesh[] = [];
+  const uprightW = Math.max(0.65, width * 0.18);
+  const lintelH = Math.max(0.45, height * 0.18);
+  const uprightH = height - lintelH * 0.5;
+  const c = Math.cos(ry);
+  const s = Math.sin(ry);
+
+  const place = (lx: number): [number, number] => [x + lx * c, z + lx * s];
+  for (const sx of [-1, 1]) {
+    const [wx, wz] = place(sx * (width * 0.5 - uprightW * 0.5));
+    out.push(addBox(scene, meshes, uprightW, uprightH * (options.broken && sx > 0 ? 0.75 : 1), depth, envTintHex(color, sx * 59 + z), wx, uprightH * 0.5, wz, ry + sx * 0.04, false, wallBoxes, 1, role));
+  }
+  out.push(addBox(scene, meshes, width, lintelH, depth * 1.12, envTintHex(color, x * 11 + z * 17), x, uprightH + lintelH * 0.45, z, ry + (options.broken ? 0.08 : 0), false, wallBoxes, 1, role));
+  if (options.collides) {
+    pushWallBoxCenterSize(wallBoxes, x, height * 0.5, z, width, height, depth);
+  }
+  return out;
+}
+
+export type LabTableOptions = {
+  width?: number;
+  depth?: number;
+  height?: number;
+  color?: number;
+  ry?: number;
+};
+
+export function addLabTable(
+  scene: Scene,
+  meshes: Mesh[],
+  wallBoxes: WallAABB[],
+  x: number,
+  z: number,
+  options: LabTableOptions = {},
+): Mesh[] {
+  const width = options.width ?? 4.4;
+  const depth = options.depth ?? 1.75;
+  const height = options.height ?? 1.05;
+  const color = options.color ?? 0x172033;
+  const ry = options.ry ?? 0;
+  const out: Mesh[] = [];
+  const topY = height;
+  out.push(addBox(scene, meshes, width, 0.18, depth, color, x, topY, z, ry, false, wallBoxes, 1, 'metal'));
+  const legX = width * 0.38;
+  const legZ = depth * 0.34;
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      const c = Math.cos(ry);
+      const s = Math.sin(ry);
+      const lx = sx * legX;
+      const lz = sz * legZ;
+      out.push(addBox(scene, meshes, 0.16, height, 0.16, 0x0b101c, x + lx * c - lz * s, height * 0.5, z + lx * s + lz * c, ry, false, wallBoxes, 1, 'metal'));
+    }
+  }
+  out.push(addBox(scene, meshes, width * 0.28, 0.34, depth * 0.42, envTintHex(0x243a56, x * 13 + z * 31), x - Math.cos(ry) * width * 0.22, topY + 0.26, z - Math.sin(ry) * width * 0.22, ry, false, wallBoxes, 1, 'metal'));
+  out.push(addBox(scene, meshes, width * 0.18, 0.08, depth * 0.36, 0x00e5ff, x + Math.cos(ry) * width * 0.18, topY + 0.22, z + Math.sin(ry) * width * 0.18, ry, false, wallBoxes, 1, 'glass'));
+  return out;
+}
+
+export function addTrimmedWallSegment(
+  scene: Scene,
+  meshes: Mesh[],
+  wallBoxes: WallAABB[],
+  w: number,
+  h: number,
+  d: number,
+  color: number,
+  x: number,
+  y: number,
+  z: number,
+  ry: number,
+  collides = false,
+): Mesh[] {
+  const out: Mesh[] = [];
+  out.push(addBox(scene, meshes, w, h, d, color, x, y, z, ry, collides, wallBoxes, 1, collides ? 'none' : 'wall'));
+  const capH = Math.min(0.34, h * 0.12);
+  out.push(addBox(scene, meshes, w * 1.04, capH, d * 1.22, envTintHex(color, x * 29 + z * 31), x, y + h * 0.5 + capH * 0.5, z, ry, false, wallBoxes, 1, 'stone'));
+  out.push(addBox(scene, meshes, w * 1.03, capH * 0.72, d * 1.16, envTintHex(color, x * 37 + z * 41), x, Math.max(capH * 0.5, y - h * 0.5 + capH * 0.5), z, ry, false, wallBoxes, 1, 'stone'));
+  return out;
+}
+
 export function addWallBox(
   scene: Scene,
   meshes: Mesh[],

@@ -14,13 +14,14 @@ import {
 
 import {
   addAmbientFill,
-  addBox,
   addDamageDecals,
   addDustMotes,
   addFloor,
+  addLabTable,
   addPoint,
   addSkySphere,
   addSunLight,
+  addTrimmedWallSegment,
   addWallBox,
   applyAlbedoHex,
   applyDiffuseHex,
@@ -98,6 +99,11 @@ export function buildLabScene(scene: Scene): ArenaBuildResult {
   addWallBox(scene, meshes, wallBoxes, 0.5, 7, 65, lOutLo, lOutHi, -32, 3.5, 0, 0);
   addWallBox(scene, meshes, wallBoxes, 0.5, 7, 65, lOutLo, lOutHi, 32, 3.5, 0, 0);
 
+  addTrimmedWallSegment(scene, meshes, wallBoxes, 18, 2.2, 0.22, 0x25364d, -18, 5.4, -31.64, 0);
+  addTrimmedWallSegment(scene, meshes, wallBoxes, 18, 2.2, 0.22, 0x25364d, 18, 5.4, 31.64, Math.PI);
+  addTrimmedWallSegment(scene, meshes, wallBoxes, 0.22, 2.2, 18, 0x25364d, -31.64, 5.4, 18, 0);
+  addTrimmedWallSegment(scene, meshes, wallBoxes, 0.22, 2.2, 18, 0x25364d, 31.64, 5.4, -18, 0);
+
   const panels: [number, number, number, number, number, number][] = [
     [0.3, 6, 10, 10, 3, 0],
     [0.3, 6, 10, -10, 3, 0],
@@ -127,21 +133,19 @@ export function buildLabScene(scene: Scene): ArenaBuildResult {
     [19, 0, 0],
   ];
   consolePos.forEach(([x, , z], i) => {
-    addBox(
+    addLabTable(
       scene,
       meshes,
-      3,
-      1.2,
-      1.5,
-      propColorDrift(0x121828, x * 67 + z * 53 + i * 17, 0.11),
-      x,
-      0.6,
-      z,
-      0,
-      false,
       wallBoxes,
-      1,
-      'metal',
+      x,
+      z,
+      {
+        width: i % 2 === 0 ? 4.2 : 3.4,
+        depth: 1.55,
+        height: 0.95,
+        color: propColorDrift(0x121828, x * 67 + z * 53 + i * 17, 0.11),
+        ry: i % 2 === 0 ? 0 : Math.PI / 2,
+      },
     );
   });
 

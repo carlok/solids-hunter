@@ -14,9 +14,12 @@ import {
   addAmbientFill,
   addBox,
   addDamageDecals,
+  addDecorativeArch,
+  addDecorativeColumn,
   addFloor,
   addPoint,
   addDustMotes,
+  addTrilith,
   addWallBox,
   applyAlbedoHex,
   makeArenaBuildResult,
@@ -115,6 +118,47 @@ export function buildDungeonScene(scene: Scene): ArenaBuildResult {
     [17, 0, 17],
   ] as const) {
     addWallBox(scene, meshes, wallBoxes, 1.5, 5.5, 1.5, dPilLo, dPilHi, x, 2.75, z, 0);
+    addDecorativeColumn(scene, meshes, wallBoxes, x, z, {
+      radius: 0.68,
+      height: 5.15,
+      color: propColorDrift(0x4d5d72, x * 37 + z * 41, 0.1),
+      role: 'stone',
+      tessellation: 10,
+      taper: 0.05,
+      broken: Math.abs(x) > 12 && Math.abs(z) > 12,
+    });
+  }
+
+  for (const [x, z, ry] of [
+    [-1, -11, 0],
+    [1, 11, Math.PI],
+    [18, -12, Math.PI / 2],
+    [-18, 12, -Math.PI / 2],
+  ] as const) {
+    addDecorativeArch(scene, meshes, wallBoxes, x, z, {
+      width: 5.6,
+      height: 4.4,
+      depth: 1.05,
+      color: propColorDrift(0x3d4858, x * 23 + z * 29, 0.11),
+      role: 'stone',
+      ry,
+      segments: 5,
+    });
+  }
+
+  for (const [x, z, ry] of [
+    [-24, -2, Math.PI / 2],
+    [24, 2, -Math.PI / 2],
+  ] as const) {
+    addTrilith(scene, meshes, wallBoxes, x, z, {
+      width: 4.8,
+      height: 3.6,
+      depth: 1.1,
+      color: propColorDrift(0x344050, x * 17 + z * 19, 0.12),
+      role: 'stone',
+      ry,
+      broken: true,
+    });
   }
 
   for (const [x, , z] of [

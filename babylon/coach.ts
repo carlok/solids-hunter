@@ -9,7 +9,7 @@ import { GameAudio } from './game-audio';
 const LS_HIT_CONFIRM = 'solidsHunterHitConfirm';
 const LS_HIT_CONFIRM_N = 'solidsHunterHitConfirmN';
 
-export type HitConfirmMode = 'off' | 'voice' | 'modal';
+export type HitConfirmMode = 'off' | 'on';
 
 const COACH_SPEECH_LANG = 'en-US';
 const COACH_SPEECH_RATE = 0.95;
@@ -27,7 +27,7 @@ function el<T extends HTMLElement>(id: string): T | null {
 export function getHitConfirmMode(): HitConfirmMode {
   try {
     const v = localStorage.getItem(LS_HIT_CONFIRM);
-    if (v === 'voice' || v === 'modal') return v;
+    if (v === 'on') return 'on';
   } catch {
     /* ignore */
   }
@@ -36,7 +36,7 @@ export function getHitConfirmMode(): HitConfirmMode {
 
 export function setHitConfirmMode(mode: HitConfirmMode): void {
   try {
-    if (mode === 'off' || mode === 'voice' || mode === 'modal') {
+    if (mode === 'off' || mode === 'on') {
       localStorage.setItem(LS_HIT_CONFIRM, mode);
     }
   } catch {
@@ -45,10 +45,9 @@ export function setHitConfirmMode(mode: HitConfirmMode): void {
   syncCoachButtons();
 }
 
-export function cycleHitConfirmMode(): void {
+export function toggleHitConfirmMode(): void {
   const o = getHitConfirmMode();
-  const next: HitConfirmMode = o === 'off' ? 'voice' : o === 'voice' ? 'modal' : 'off';
-  setHitConfirmMode(next);
+  setHitConfirmMode(o === 'off' ? 'on' : 'off');
 }
 
 export function getHitConfirmFirstN(): number {
@@ -71,15 +70,11 @@ export function coachAppliesThisShot(shotsThisRound: number): boolean {
 
 export function syncCoachButtons(): void {
   const mode = getHitConfirmMode();
-  const cap = getHitConfirmFirstN();
-  let label = 'Coach: OFF';
-  if (mode === 'voice') label = 'Coach: VOICE';
-  if (mode === 'modal') label = 'Coach: MODAL';
-  if (cap > 0) label += ' · first ' + cap;
+  const checked = mode === 'on';
   for (const id of ['menu-coach-btn', 'hunt-coach-btn', 'pause-coach-btn']) {
-    const b = el<HTMLButtonElement>(id);
-    if (!b) continue;
-    b.textContent = label;
+    const c = el<HTMLInputElement>(id);
+    if (!c) continue;
+    c.checked = checked;
   }
 }
 
@@ -484,16 +479,14 @@ export function scheduleEndRoundAfterCorrectCoach(
 export function onHitWrongAfterScoring(ent: GameEntity, coachThis: boolean): void {
   if (!coachThis) return;
   const mode = getHitConfirmMode();
-  if (mode === 'voice') beginWrongCoachVoiceOnly(ent.colorName, ent.shape);
-  else if (mode === 'modal') beginWrongCoachModal(ent.colorName, ent.shape);
+  if (mode === 'on') beginWrongCoachModal(ent.colorName, ent.shape);
 }
 
 /** Miss / environment — no hunt entity resolved at crosshair (coach only, no score delta here). */
 export function onHitMissAfterScoring(coachThis: boolean): void {
   if (!coachThis) return;
   const mode = getHitConfirmMode();
-  if (mode === 'voice') beginMissCoachVoiceOnly();
-  else if (mode === 'modal') beginMissCoachModal();
+  if (mode === 'on') beginMissCoachModal();
 }
 
 /** Clear re-lock flag when pointer lock succeeds (Three `controls` lock). */
@@ -510,10 +503,9 @@ export function syncSoundToggles(): void {
     hudSoundToggle.title = m ? 'Sound off — click or M to enable' : 'Sound on — click or M to mute';
   }
   for (const id of ['menu-sound-toggle', 'hunt-sound-toggle', 'pause-sound-toggle']) {
-    const b = el<HTMLButtonElement>(id);
-    if (!b) continue;
-    b.setAttribute('aria-pressed', m ? 'true' : 'false');
-    b.textContent = m ? 'Sound: OFF' : 'Sound: ON';
+    const c = el<HTMLInputElement>(id);
+    if (!c) continue;
+    c.checked = !m;
   }
 }
 
@@ -527,23 +519,22 @@ export function wireCoachAndSoundUi(canvas: HTMLCanvasElement): void {
     });
   }
   for (const id of ['menu-coach-btn', 'hunt-coach-btn', 'pause-coach-btn']) {
-    const b = el<HTMLButtonElement>(id);
-    if (!b) continue;
-    b.addEventListener('click', (e) => {
+    const c = el<HTMLInputElement>(id);
+    if (!c) continue;
+    c.addEventListener('change', (e) => {
       e.stopPropagation();
-      cycleHitConfirmMode();
+      toggleHitConfirmMode();
     });
   }
-  const onSoundToggleClick = (e: MouseEvent): void => {
+  const onSoundToggleChange = (e: Event): void => {
     e.stopPropagation();
-    if (e.currentTarget === el('hud-sound-toggle')) e.preventDefault();
     GameAudio.toggleMuted();
     cancelHitSpeech();
     syncSoundToggles();
   };
-  for (const id of ['hud-sound-toggle', 'menu-sound-toggle', 'hunt-sound-toggle', 'pause-sound-toggle']) {
-    const b = el<HTMLButtonElement>(id);
-    if (b) b.addEventListener('click', onSoundToggleClick);
+  for (const id of ['menu-sound-toggle', 'hunt-sound-toggle', 'pause-sound-toggle']) {
+    const c = el<HTMLInputElement>(id);
+    if (c) c.addEventListener('change', onSoundToggleChange);
   }
 
   document.addEventListener(
@@ -556,7 +547,7 @@ export function wireCoachAndSoundUi(canvas: HTMLCanvasElement): void {
         )
       )
         return;
-      if ((e.target as Element | null)?.closest('button, .env-card, .modal-close, a')) {
+      if ((e.target as Element | null)?.closest('button, .env-card, .modal-close, a, input[type="checkbox"]')) {
         GameAudio.uiClick();
       }
     },

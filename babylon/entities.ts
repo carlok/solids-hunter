@@ -206,6 +206,17 @@ export function createSolidEntity(
   body.material = mat;
   body.parent = root;
   body.isPickable = false;
+  body.renderOutline = true;
+  body.outlineColor = mat.albedoColor.clone().scale(0.55).addInPlace(new Color3(0.22, 0.24, 0.26));
+  body.outlineWidth = 0.012;
+  const pulseOffset = entityId * 0.73;
+  const pulseObs = scene.onBeforeRenderObservable.add(() => {
+    const t = performance.now() * 0.001 + pulseOffset;
+    body.outlineWidth = 0.012 + (Math.sin(t * 2.1) + 1) * 0.006;
+  });
+  body.onDisposeObservable.add(() => {
+    scene.onBeforeRenderObservable.remove(pulseObs);
+  });
 
   const hitbox = MeshBuilder.CreateSphere(`ent_hitbox_${entityId}`, { diameter: 1.6 }, scene);
   hitbox.parent = root;

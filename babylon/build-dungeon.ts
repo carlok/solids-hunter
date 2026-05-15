@@ -13,6 +13,7 @@ import {
 import {
   addAmbientFill,
   addBox,
+  addDamageDecals,
   addFloor,
   addPoint,
   addDustMotes,
@@ -142,6 +143,15 @@ export function buildDungeonScene(scene: Scene): ArenaBuildResult {
       'stone',
     );
   }
+
+  addDamageDecals(scene, meshes, textures, [
+    { x: -34.22, y: 2.8, z: -18, w: 5.4, h: 3.8, ry: Math.PI / 2, kind: 'hole', seed: 101 },
+    { x: 34.22, y: 3.1, z: 17, w: 4.6, h: 3.3, ry: -Math.PI / 2, kind: 'crack', seed: 102 },
+    { x: -18, y: 2.2, z: -34.22, w: 5.2, h: 3.5, ry: 0, kind: 'crack', seed: 103 },
+    { x: 20, y: 3.5, z: 34.22, w: 4.2, h: 3.1, ry: Math.PI, kind: 'hole', seed: 104 },
+    { x: -9, y: 2.9, z: -10.35, w: 3.2, h: 2.4, ry: 0, kind: 'crack', seed: 105 },
+    { x: 6.35, y: 2.6, z: -19, w: 2.8, h: 2.6, ry: -Math.PI / 2, kind: 'hole', seed: 106 },
+  ]);
 
   addDustMotes(scene, meshes);
 

@@ -91,8 +91,8 @@ export function spawnGameEntities(scene: Scene, opts: SpawnGameOptions): GameEnt
   const { wallBoxes, envSpawnHalfXZ, rule } = opts;
 
   const list: { shape: SolidShape; color: string }[] = Array.from({ length: count }, () => ({
-    shape: SHAPES[Math.floor(rng() * 4)]!,
-    color: CNAMES[Math.floor(rng() * 7)]!,
+    shape: SHAPES[Math.floor(rng() * SHAPES.length)]!,
+    color: CNAMES[Math.floor(rng() * CNAMES.length)]!,
   }));
   ensureMinimumMatches(list, rule, 3, rng);
 

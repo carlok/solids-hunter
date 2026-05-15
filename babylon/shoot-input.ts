@@ -12,7 +12,7 @@ import { resolveEntityIdFromPick } from './entity-pick';
 import type { GameEntity } from './entity-motion';
 import { gameFeedback } from './entity-motion';
 import { GameAudio } from './game-audio';
-import { spawnShotTracer } from './shot-tracer';
+import { spawnImpactMark, spawnShotTracer } from './shot-tracer';
 
 const MAX_TRACE = 135;
 const MUZZLE_FORWARD = 0.22;
@@ -131,6 +131,9 @@ export function attachBabylonShooting(options: {
     }
 
     spawnShotTracer(scene, muzzle, traceEnd);
+    if (pick.hit && pick.pickedPoint) {
+      spawnImpactMark(scene, pick.pickedPoint, dir);
+    }
 
     if (!ent) {
       const coachThis = coachAppliesThisShot(runtime.shotsThisRound);

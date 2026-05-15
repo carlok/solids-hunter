@@ -9,6 +9,7 @@ import {
 import {
   addAmbientFill,
   addBox,
+  addDamageDecals,
   addDirFromPosition,
   addDustMotes,
   addFloor,
@@ -160,6 +161,15 @@ export function buildRuinsScene(scene: Scene): ArenaBuildResult {
     const ry = Math.random() * Math.PI;
     addWallBox(scene, meshes, wallBoxes, s, s, s, 0x3a3a3a, 0x6a6a6a, dx, s / 2, dz, ry);
   }
+
+  addDamageDecals(scene, meshes, textures, [
+    { x: -44.22, y: 3.1, z: -29, w: 6, h: 4.1, ry: Math.PI / 2, kind: 'hole', seed: 301 },
+    { x: 44.22, y: 2.6, z: 22, w: 5.2, h: 3.8, ry: -Math.PI / 2, kind: 'crack', seed: 302 },
+    { x: -30, y: 2.4, z: -44.22, w: 5.6, h: 3.7, ry: 0, kind: 'crack', seed: 303 },
+    { x: 26, y: 3.5, z: 44.22, w: 6.2, h: 4.6, ry: Math.PI, kind: 'hole', seed: 304 },
+    { x: -11, y: 2.5, z: -8.52, w: 3.5, h: 2.5, ry: 0.2, kind: 'hole', seed: 305 },
+    { x: 9.52, y: 1.8, z: 7, w: 4.2, h: 2.1, ry: 0.3 + Math.PI, kind: 'crack', seed: 306 },
+  ]);
 
   addDustMotes(scene, meshes);
 

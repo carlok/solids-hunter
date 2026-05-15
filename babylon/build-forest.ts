@@ -12,6 +12,7 @@ import {
 
 import {
   addDirFromPosition,
+  addDamageDecals,
   addDustMotes,
   addFloor,
   addHemisphericFillSplit,
@@ -161,6 +162,13 @@ export function buildForestScene(scene: Scene): ArenaBuildResult {
     meshes.push(rock);
     pushWallBoxCenterSize(wallBoxes, x, 0.4, z, rockSize * 2.2, rockSize * 2.2, rockSize * 2.2);
   }
+
+  addDamageDecals(scene, meshes, textures, [
+    { x: -44.22, y: 4.2, z: -24, w: 5.6, h: 4.8, ry: Math.PI / 2, kind: 'crack', seed: 201 },
+    { x: 44.22, y: 5.3, z: 20, w: 6.2, h: 5.1, ry: -Math.PI / 2, kind: 'hole', seed: 202 },
+    { x: -26, y: 4.1, z: -44.22, w: 5.8, h: 4.3, ry: 0, kind: 'crack', seed: 203 },
+    { x: 28, y: 5.5, z: 44.22, w: 6.3, h: 5, ry: Math.PI, kind: 'hole', seed: 204 },
+  ]);
 
   addDustMotes(scene, meshes);
 

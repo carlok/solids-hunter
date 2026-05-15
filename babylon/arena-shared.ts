@@ -126,6 +126,69 @@ function getOrCreateCloudPuffTexture(
   return tex;
 }
 
+function makeDamageTexture(
+  scene: Scene,
+  textures: DynamicTexture[],
+  name: string,
+  seed: number,
+  kind: 'crack' | 'hole',
+): DynamicTexture {
+  const tex = new DynamicTexture(name, { width: 128, height: 128 }, scene, false);
+  const ctx = tex.getContext();
+  ctx.clearRect(0, 0, 128, 128);
+  const rnd = mulberry32(seed);
+
+  if (kind === 'hole') {
+    const cx = 64 + (rnd() - 0.5) * 10;
+    const cy = 64 + (rnd() - 0.5) * 10;
+    const sides = 5 + Math.floor(rnd() * 5);
+    ctx.beginPath();
+    for (let i = 0; i < sides; i++) {
+      const a = (i / sides) * Math.PI * 2 + rnd() * 0.25;
+      const r = 24 + rnd() * 24;
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(2, 2, 4, 0.46)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  const lines = kind === 'hole' ? 7 : 12;
+  ctx.lineCap = 'round';
+  for (let i = 0; i < lines; i++) {
+    const x0 = 64 + (rnd() - 0.5) * (kind === 'hole' ? 50 : 84);
+    const y0 = 64 + (rnd() - 0.5) * (kind === 'hole' ? 50 : 84);
+    let x = x0;
+    let y = y0;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    const steps = 2 + Math.floor(rnd() * 4);
+    const base = rnd() * Math.PI * 2;
+    for (let s = 0; s < steps; s++) {
+      const len = 9 + rnd() * 22;
+      const a = base + (rnd() - 0.5) * 1.4;
+      x += Math.cos(a) * len;
+      y += Math.sin(a) * len;
+      ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = `rgba(4, 5, 8, ${0.18 + rnd() * 0.22})`;
+    ctx.lineWidth = 1.1 + rnd() * 2.2;
+    ctx.stroke();
+  }
+  tex.update(true);
+  tex.hasAlpha = true;
+  tex.wrapU = Texture.CLAMP_ADDRESSMODE;
+  tex.wrapV = Texture.CLAMP_ADDRESSMODE;
+  textures.push(tex);
+  return tex;
+}
+
 /** `THREE.AmbientLight`-like fill via hemispheric with matched ground tone. */
 export function addAmbientFill(
   scene: Scene,
@@ -572,6 +635,55 @@ export function addFloor(
       'prop'
     );
   }
+}
+
+export type DamageDecal = {
+  x: number;
+  y: number;
+  z: number;
+  w: number;
+  h: number;
+  ry: number;
+  kind?: 'crack' | 'hole';
+  seed?: number;
+};
+
+export function addDamageDecals(
+  scene: Scene,
+  meshes: Mesh[],
+  textures: DynamicTexture[],
+  decals: readonly DamageDecal[],
+): void {
+  decals.forEach((d, i) => {
+    const kind = d.kind ?? 'crack';
+    const tex = makeDamageTexture(
+      scene,
+      textures,
+      `damage_${meshes.length}_${i}`,
+      d.seed ?? Math.floor((d.x * 97 + d.y * 53 + d.z * 31 + i * 401) * 1000),
+      kind,
+    );
+    const mat = new StandardMaterial(`damageMat_${meshes.length}_${i}`, scene);
+    mat.diffuseTexture = tex;
+    mat.opacityTexture = tex;
+    mat.useAlphaFromDiffuseTexture = true;
+    mat.diffuseColor = kind === 'hole' ? new Color3(0.08, 0.075, 0.07) : new Color3(0.02, 0.02, 0.025);
+    mat.emissiveColor.copyFrom(mat.diffuseColor);
+    mat.specularColor = Color3.Black();
+    mat.disableLighting = true;
+    mat.alpha = kind === 'hole' ? 0.78 : 0.64;
+    mat.transparencyMode = StandardMaterial.MATERIAL_ALPHABLEND;
+    mat.disableDepthWrite = true;
+    mat.backFaceCulling = false;
+
+    const plane = MeshBuilder.CreatePlane(`damagePlane_${meshes.length}_${i}`, { width: d.w, height: d.h }, scene);
+    plane.position.set(d.x, d.y, d.z);
+    plane.rotation.y = d.ry;
+    plane.material = mat;
+    plane.isPickable = false;
+    plane.renderingGroupId = 0;
+    meshes.push(plane);
+  });
 }
 
 /** Sky gradient sphere + shared with Three `addSkySphere`. */

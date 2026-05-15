@@ -15,6 +15,7 @@ import {
 import {
   addAmbientFill,
   addBox,
+  addDamageDecals,
   addDustMotes,
   addFloor,
   addPoint,
@@ -166,6 +167,15 @@ export function buildLabScene(scene: Scene): ArenaBuildResult {
     sl.range = 15;
     lights.push(sl);
   }
+
+  addDamageDecals(scene, meshes, textures, [
+    { x: -31.72, y: 2.6, z: -18, w: 3.6, h: 2.4, ry: Math.PI / 2, kind: 'crack', seed: 11 },
+    { x: 31.72, y: 3.2, z: 13, w: 4.2, h: 2.8, ry: -Math.PI / 2, kind: 'hole', seed: 12 },
+    { x: -17, y: 2.4, z: -31.72, w: 3.4, h: 2.1, ry: 0, kind: 'crack', seed: 13 },
+    { x: 18, y: 3.1, z: 31.72, w: 4, h: 2.7, ry: Math.PI, kind: 'hole', seed: 14 },
+    { x: 10.18, y: 3.5, z: -2, w: 2.3, h: 3.1, ry: Math.PI / 2, kind: 'crack', seed: 15 },
+    { x: -2, y: 3.2, z: 10.18, w: 2.9, h: 2.4, ry: Math.PI, kind: 'hole', seed: 16 },
+  ]);
 
   addSkySphere(scene, meshes, textures);
   addSunLight(scene, lights);

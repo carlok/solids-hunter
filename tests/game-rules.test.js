@@ -131,6 +131,26 @@ describe('constants', () => {
     expect(CNAMES.sort()).toEqual(Object.keys(COLORS).sort());
   });
 
+  it('uses seven highly separated rule colors', () => {
+    expect(CNAMES).toHaveLength(7);
+    expect(CNAMES).not.toContain('Orange');
+    expect(CNAMES).toContain('Cyan');
+
+    const channels = (rgb) => [
+      (rgb >> 16) & 0xff,
+      (rgb >> 8) & 0xff,
+      rgb & 0xff
+    ];
+    for (let i = 0; i < CNAMES.length; i++) {
+      for (let j = i + 1; j < CNAMES.length; j++) {
+        const a = channels(COLORS[CNAMES[i]]);
+        const b = channels(COLORS[CNAMES[j]]);
+        const dist = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+        expect(dist).toBeGreaterThan(150);
+      }
+    }
+  });
+
   it('MOVE_MODES has four modes', () => {
     expect(MOVE_MODES).toEqual(['drift', 'bounce', 'orbit', 'slide']);
   });

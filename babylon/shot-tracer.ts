@@ -94,3 +94,40 @@ export function spawnShotTracer(scene: Scene, start: Vector3, end: Vector3): voi
     haloMat.alpha = 0.88 * k;
   });
 }
+
+export function spawnImpactMark(scene: Scene, point: Vector3, shotDir: Vector3): void {
+  const normal = shotDir.clone().normalize().scaleInPlace(-1);
+  const pos = point.clone().addInPlace(normal.clone().scale(0.035));
+  const markMat = new StandardMaterial(`impact_${Math.random().toString(36).slice(2)}`, scene);
+  markMat.diffuseColor.copyFromFloats(0.08, 0.055, 0.035);
+  markMat.emissiveColor.copyFromFloats(0.12, 0.06, 0.025);
+  markMat.specularColor = Color3.Black();
+  markMat.alpha = 0.72;
+  markMat.transparencyMode = StandardMaterial.MATERIAL_ALPHABLEND;
+  markMat.disableLighting = true;
+  markMat.disableDepthWrite = true;
+  markMat.backFaceCulling = false;
+
+  const mark = MeshBuilder.CreateDisc(
+    'impact_mark',
+    { radius: 0.22, tessellation: 14, sideOrientation: Mesh.DOUBLESIDE },
+    scene,
+  );
+  mark.material = markMat;
+  mark.position.copyFrom(pos);
+  mark.lookAt(pos.clone().addInPlace(normal));
+  mark.isPickable = false;
+  mark.renderingGroupId = 0;
+
+  const t0 = performance.now();
+  const dur = 3600;
+  const obs = scene.onBeforeRenderObservable.add(() => {
+    const u = (performance.now() - t0) / dur;
+    if (u >= 1) {
+      scene.onBeforeRenderObservable.remove(obs);
+      mark.dispose(false, true);
+      return;
+    }
+    markMat.alpha = 0.72 * (1 - u);
+  });
+}

@@ -72,23 +72,21 @@ export function buildLabScene(scene: Scene): ArenaBuildResult {
   ceil.material = ceilMat;
   meshes.push(ceil);
 
+  const lineMat = new StandardMaterial('lineMat', scene);
+  lineMat.disableLighting = true;
+  applyDiffuseHex(lineMat, 0x18183a);
+
   for (let i = -30; i <= 30; i += 5) {
-    const lineMat = new StandardMaterial(`lineMat_${i}_a`, scene);
-    lineMat.disableLighting = true;
-    applyDiffuseHex(lineMat, 0x18183a);
-    const gl1 = MeshBuilder.CreatePlane('gl1', { width: 60, height: 0.055 }, scene);
+    const gl1 = MeshBuilder.CreatePlane(`gl1_${i}`, { width: 60, height: 0.055 }, scene);
     gl1.rotation.x = Math.PI / 2;
-    gl1.position.set(0, 0.088, i);
+    gl1.position.set(0, 0.001, i);
     gl1.material = lineMat;
     meshes.push(gl1);
 
-    const lineMat2 = new StandardMaterial(`lineMat_${i}_b`, scene);
-    lineMat2.disableLighting = true;
-    applyDiffuseHex(lineMat2, 0x18183a);
-    const gl2 = MeshBuilder.CreatePlane('gl2', { width: 0.055, height: 60 }, scene);
+    const gl2 = MeshBuilder.CreatePlane(`gl2_${i}`, { width: 0.055, height: 60 }, scene);
     gl2.rotation.x = Math.PI / 2;
-    gl2.position.set(i, 0.088, 0);
-    gl2.material = lineMat2;
+    gl2.position.set(i, 0.001, 0);
+    gl2.material = lineMat;
     meshes.push(gl2);
   }
 

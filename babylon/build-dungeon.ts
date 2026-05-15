@@ -54,7 +54,7 @@ export function buildDungeonScene(scene: Scene): ArenaBuildResult {
 
   const ceil = MeshBuilder.CreatePlane('dungeonCeil', { width: 70, height: 70 }, scene);
   ceil.rotation.x = Math.PI / 2;
-  ceil.position.y = 5.5;
+  ceil.position.y = 10;
   const ceilMat = new PBRMaterial('dungeonCeilMat', scene);
   applyAlbedoHex(ceilMat, envTintHex(0x302018, 11));
   stylePbrSurfaceMaterial(ceilMat, 'stone');

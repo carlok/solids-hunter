@@ -148,14 +148,18 @@ index.html
 
 ## 11. Acceptance checklist (parity)
 
-- [ ] Same rule types and `ensureMinimumMatches` behavior as tests.
-- [ ] Four envs selectable; pointer lock same UX (body vs canvas lock quirks documented in current `main.js` comments).
-- [ ] Entity motion modes visually similar; **no long-term embedding** inside wall boxes.
-- [ ] LMB ray: **visible tracer** muzzle → hit or max range; audio hooks.
-- [ ] **Sound toggle** in HUD: mute/unmute all gameplay + UI sounds; persist preference (`solidsHunterMute`); no spurious UI click when pressing the toggle (document-level UI click handler should **exclude** that control).
-- [ ] **Coach:** `solidsHunterHitConfirm` + optional `solidsHunterHitConfirmN`; OFF / VOICE / MODAL behavior; freeze during wrong-hit coach; modal OK gated on speech end; re-pointer-lock after modal; correct final hit can delay round end until coach line finishes when speech allowed.
-- [ ] **Speech vs mute:** `isSpeechAllowed()` mirrors mute; cancel speech on mute toggle.
-- [ ] Score / wrong hit / round end flow unchanged (including delayed round end when coach speaks on last correct hit).
+- [x] Same rule types and `ensureMinimumMatches` behavior as tests.
+- [x] Four envs selectable; pointer lock same UX (body vs canvas lock quirks documented in current `main.js` comments).
+- [x] Entity motion modes visually similar; **no long-term embedding** inside wall boxes.
+- [x] LMB ray: **visible tracer** muzzle → hit or max range; audio hooks.
+- [x] **Sound toggle** in HUD: mute/unmute all gameplay + UI sounds; persist preference (`solidsHunterMute`); no spurious UI click when pressing the toggle (document-level UI click handler should **exclude** that control).
+- [x] **Coach:** `solidsHunterHitConfirm` + optional `solidsHunterHitConfirmN`; OFF / VOICE / MODAL behavior; freeze during wrong-hit coach; modal OK gated on speech end; re-pointer-lock after modal; correct final hit can delay round end until coach line finishes when speech allowed.
+- [x] **Speech vs mute:** `isSpeechAllowed()` mirrors mute; cancel speech on mute toggle.
+- [x] Score / wrong hit / round end flow unchanged (including delayed round end when coach speaks on last correct hit).
+
+**Default playable path:** Vite uses root `index.html` → `babylon/main.ts`. After `./scripts/podman build`, serve **`dist-babylon/`** as the HTTP root and open **`/index.html`** (`assets/sounds/*.wav` are copied into the dist by the build).
+
+**Milestone — DOM / audio / coach (done):** Wire DOM HUD, coach/Web Speech, GameAudio + `localStorage`; pointer lock modal flows (`babylon/coach.ts`, `babylon/game-audio.ts`, `index.html`, `babylon/main.ts`, `babylon/shoot-input.ts`).
 
 ---
 
@@ -169,4 +173,4 @@ index.html
 
 ---
 
-*Handoff for Solids Hunter. Rules and collision pure functions: `js/lib/*.js` and tests. Hit-coach copy pools and Web Speech live in `js/main.js` (not `game-rules.js`).*
+*Handoff for Solids Hunter. Rules and collision pure functions: `lib/*.js` and tests. Hit-coach copy pools and Web Speech live under `babylon/` (not `game-rules.js`).*

@@ -6,11 +6,18 @@
   "scripts": {
     "test": "vitest run",
     "test:cov": "vitest run --coverage",
-    "build": "node scripts/build-dist.mjs"
+    "dev": "vite",
+    "dev:babylon": "vite",
+    "build": "vite build",
+    "build:babylon": "vite build"
+  },
+  "dependencies": {
+    "@babylonjs/core": "^7.54.3"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^2.1.9",
-    "esbuild": "^0.24.2",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.11",
     "vitest": "^2.1.9"
   }
 }

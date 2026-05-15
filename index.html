@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Solids Hunter</title>
-<link rel="stylesheet" href="css/main.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solids Hunter</title>
+  <link rel="stylesheet" href="/css/main.css" />
 </head>
 <body>
 
@@ -55,16 +56,15 @@
     <p><strong>Solids Hunter</strong></p>
     <p>By <strong>Carlo Perassi</strong>.</p>
     <p>Source &amp; updates: <a href="https://github.com/carlok/solidshunter" target="_blank" rel="noopener">github.com/carlok/solidshunter</a></p>
-    <p>Built with <a href="https://threejs.org/" target="_blank" rel="noopener">Three.js</a> (r128) and PointerLockControls. Procedural environments and entities — no external 3D assets.</p>
+    <p>Built with <a href="https://www.babylonjs.com/" target="_blank" rel="noopener">Babylon.js</a> and Web Pointer Lock. Procedural environments and shapes; a small bundled <abbr title="image-based lighting">IBL</abbr> map drives PBR reflections.</p>
     <p style="margin-top:1rem;font-size:0.72rem;color:#7a8799;">Released under the MIT License. Thanks for playing.</p>
   </div>
 </div>
 
-<canvas id="c"></canvas>
+<canvas id="game" tabindex="0" aria-label="Game view"></canvas>
 <div id="vignette" class="hidden"></div>
 <div id="flash"></div>
 
-<!-- ENV PICKER -->
 <div id="env-screen" class="screen">
   <div class="game-title">SOLIDS HUNTER</div>
   <div class="subtitle">CHOOSE YOUR ARENA</div>
@@ -97,7 +97,6 @@
   <button class="btn" id="env-btn" disabled>— SELECT AN ENVIRONMENT —</button>
 </div>
 
-<!-- Round rule (Solids Hunter) -->
 <div id="hunt-screen" class="screen hidden">
   <div class="lbl">YOUR TARGET</div>
   <div class="rule" id="rule-disp"></div>
@@ -112,39 +111,16 @@
   </div>
 </div>
 
-<!-- HUD -->
 <div id="hud" class="hidden">
   <button type="button" id="hud-sound-toggle" class="hud-sound-toggle" aria-pressed="false" title="Sound on — click to mute" aria-label="Toggle game sound">🔊</button>
-  <!-- Lower-center HUD: simple symmetric cone (abstract “barrel”) -->
-  <div id="hud-weapon" class="hud-weapon" aria-hidden="true">
-    <svg class="hud-weapon-svg" viewBox="0 0 200 180" preserveAspectRatio="xMidYMax meet" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="w-cone-fill" x1="0%" y1="100%" x2="0%" y2="0%">
-          <stop offset="0%" stop-color="#1c2433"/>
-          <stop offset="55%" stop-color="#455a6e"/>
-          <stop offset="100%" stop-color="#9eb0c4"/>
-        </linearGradient>
-      </defs>
-      <polygon
-        points="100,8 168,172 32,172"
-        fill="url(#w-cone-fill)"
-        stroke="rgba(255,255,255,0.28)"
-        stroke-width="1.25"
-        stroke-linejoin="round"/>
-    </svg>
-  </div>
   <div id="hud-reticle" class="hud-reticle" aria-hidden="true">
     <svg class="hud-reticle-svg" viewBox="-64 -64 128 128" xmlns="http://www.w3.org/2000/svg">
-      <!-- Outer range ring -->
       <circle class="reticle-ring-outer" cx="0" cy="0" r="38" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1.2"/>
       <circle cx="0" cy="0" r="22" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="0.75" stroke-dasharray="4 5"/>
-      <!-- Corner brackets -->
       <path fill="none" stroke="rgba(255,255,255,0.75)" stroke-width="1.6" stroke-linecap="square"
         d="M -8 -28 L -8 -40 L 8 -40 L 8 -28 M 28 -8 L 40 -8 L 40 8 L 28 8 M 8 28 L 8 40 L -8 40 L -8 28 M -28 8 L -40 8 L -40 -8 L -28 -8"/>
-      <!-- Fine cross (dim) -->
       <line x1="0" y1="-12" x2="0" y2="12" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>
       <line x1="-12" y1="0" x2="12" y2="0" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>
-      <!-- Center dot -->
       <circle cx="0" cy="0" r="2.2" fill="rgba(255,80,70,0.95)" stroke="rgba(0,0,0,0.5)" stroke-width="0.5"/>
     </svg>
   </div>
@@ -166,7 +142,6 @@
   <div id="hud-coach-toast" class="hud-coach-toast hidden" role="status" aria-live="polite"></div>
 </div>
 
-<!-- PAUSED -->
 <div id="paused" class="screen hidden">
   <div class="p-title">PAUSED</div>
   <div class="p-sub">Click to resume</div>
@@ -180,7 +155,6 @@
   </div>
 </div>
 
-<!-- ROUND END -->
 <div id="round-end" class="screen hidden">
   <div class="re-lbl">ROUND COMPLETE</div>
   <div class="re-title">ALL TARGETS ELIMINATED</div>
@@ -193,9 +167,6 @@
 </div>
 
 <p id="lock-err-banner" class="lock-err-banner hidden" role="status" aria-live="polite"></p>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
-<script src="js/audio.js"></script>
-<script type="module" src="js/main.js"></script>
+<script type="module" src="/babylon/main.ts"></script>
 </body>
 </html>

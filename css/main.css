@@ -1,6 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Rajdhani:wght@400;500;600;700&display=swap');
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #1a1d28; font-family: 'Courier New', monospace; overflow: hidden; color: #e8eaf0; }
-  canvas { display: block; position: fixed; inset: 0; z-index: 1; }
+  body { background: #1a1d28; font-family: 'Rajdhani', 'Segoe UI', sans-serif; overflow: hidden; color: #e8eaf0; }
+  /* Full-viewport GL: explicit size helps Babylon’s first engine.resize() match the layout box */
+  canvas#game,
+  canvas { display: block; position: fixed; inset: 0; width: 100%; height: 100%; z-index: 1; }
 
   /* Top bar: hamburger + menu (hidden while pointer-locked in-game) */
   #top-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 40; pointer-events: none; }
@@ -31,7 +35,7 @@
   #nav-dropdown button {
     display: block; width: 100%; text-align: left; padding: 0.75rem 1rem;
     border: none; border-bottom: 1px solid #eef2f7; background: #fff;
-    font-family: 'Courier New', monospace; font-size: 0.78rem;
+    font-family: 'Rajdhani', sans-serif; font-size: 0.85rem;
     letter-spacing: 0.12em; color: #2a3142; cursor: pointer;
   }
   #nav-dropdown button:last-child { border-bottom: none; }
@@ -124,13 +128,14 @@
   }
   #env-screen .game-title {
     font-size: clamp(2.2rem, 6.5vw, 3.6rem);
+    font-family: 'Orbitron', sans-serif;
     letter-spacing: 0.12em;
     line-height: 1.15;
     max-width: min(96vw, 36rem);
     text-align: center;
     color: #0097a7; margin-bottom: 0.15em;
     text-shadow: 0 2px 24px rgba(0,151,167,0.25);
-    font-weight: bold;
+    font-weight: 800;
   }
   #env-screen .subtitle { color: #5a6578; font-size: 0.78rem; letter-spacing: 0.35em; margin-bottom: 1rem; }
 
@@ -182,7 +187,7 @@
   .btn {
     background: #fff; border: 1px solid #0097a7;
     color: #00838f; padding: 0.72rem 2.4rem;
-    font-family: 'Courier New', monospace; font-size: 0.85rem;
+    font-family: 'Orbitron', sans-serif; font-size: 0.78rem;
     letter-spacing: 0.18em; cursor: pointer;
     border-radius: 6px;
     transition: background 0.15s, box-shadow 0.15s;
@@ -465,3 +470,26 @@
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   }
   .lock-err-banner.hidden { display: none; }
+
+  /* Babylon (Vite root index.html) */
+  #hud-babylon {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 12;
+    pointer-events: none;
+    padding: 0.65rem 1rem;
+    background: linear-gradient(180deg, rgba(15, 18, 26, 0.88) 0%, transparent 100%);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    color: #e8eaf0;
+  }
+  #hud-rule-babylon {
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+    color: #7ee7ff;
+  }
+  .hud-babylon-row { opacity: 0.92; }
+  #flash-babylon {
+    position: fixed; inset: 0; pointer-events: none; z-index: 14;
+    opacity: 0; transition: opacity 0.07s;
+  }
+  #round-end-babylon { z-index: 22; }
+  #round-end-babylon p { margin: 0.35rem 0; text-align: center; max-width: 24rem; }

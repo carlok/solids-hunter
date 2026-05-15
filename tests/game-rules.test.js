@@ -7,7 +7,7 @@ import {
   pick,
   generateHuntRule,
   ensureMinimumMatches
-} from '../js/lib/game-rules.js';
+} from '../lib/game-rules.js';
 
 describe('pick', () => {
   it('returns first element when rng is 0', () => {
@@ -46,6 +46,57 @@ describe('generateHuntRule', () => {
     expect(rule.badge.startsWith('NOT ')).toBe(true);
     const badS = rule.badge.slice(4);
     expect(SHAPES).toContain(badS);
+  });
+
+  it('produces color OR color when rng in fourth branch', () => {
+    let i = 0;
+    const seq = [0.55, 0, 0, 0.99];
+    const rng = () => seq[i++] ?? 0.5;
+    const rule = generateHuntRule(rng);
+    expect(rule.badge).toMatch(/ OR /);
+    expect(rule.lines[0]).toMatch(/ OR /);
+    const [a, b] = rule.lines[0].split(' OR ');
+    expect(CNAMES).toContain(a);
+    expect(CNAMES).toContain(b);
+    expect(a).not.toBe(b);
+    expect(rule.matches({ color: a, shape: 'Cube' })).toBe(true);
+    expect(rule.matches({ color: b, shape: 'Cube' })).toBe(true);
+  });
+
+  it('produces shape OR shape when rng in fifth branch', () => {
+    let i = 0;
+    const seq = [0.67, 0, 0, 0.99];
+    const rng = () => seq[i++] ?? 0.5;
+    const rule = generateHuntRule(rng);
+    expect(rule.badge).toMatch(/ OR /);
+    const [s1, s2] = rule.badge.split(' OR ');
+    expect(SHAPES).toContain(s1);
+    expect(SHAPES).toContain(s2);
+    expect(s1).not.toBe(s2);
+  });
+
+  it('produces color AND NOT shape in sixth branch', () => {
+    let i = 0;
+    const seq = [0.79, 0.1, 0.1];
+    const rng = () => seq[i++] ?? 0.5;
+    const rule = generateHuntRule(rng);
+    expect(rule.badge).toMatch(/ AND NOT /);
+    const m = rule.badge.match(/^(.+) AND NOT (.+)$/);
+    expect(m).not.toBeNull();
+    const [, c, s] = m;
+    expect(CNAMES).toContain(c);
+    expect(SHAPES).toContain(s);
+    expect(rule.matches({ color: c, shape: s })).toBe(false);
+    expect(rule.matches({ color: c, shape: SHAPES.find((x) => x !== s) })).toBe(true);
+  });
+
+  it('produces compound (c AND s) OR cB in final branch', () => {
+    let i = 0;
+    const seq = [0.91, 0, 0.1, 0, 0, 0.99];
+    const rng = () => seq[i++] ?? 0.5;
+    const rule = generateHuntRule(rng);
+    expect(rule.badge).toMatch(/\) OR /);
+    expect(rule.lines.length).toBeGreaterThanOrEqual(1);
   });
 });
 

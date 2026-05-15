@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Run Node/npm/Vite/Vitest only inside Podman. Do not use host npm for this project.
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+usage() {
+  sed -n '1,40p' <<'EOF'
+Usage: ./scripts/podman <command>
+
+  install       npm ci into the compose node_modules volume
+  dev           Vite dev server on http://127.0.0.1:5173/
+  test          vitest run
+  test-cov      vitest with coverage
+  build         vite build → dist-babylon/
+  shell         interactive bash in the app tree
+  compose-build  build compose images one service at a time (works with docker-compose; lighter on disk)
+  lock-update      refresh package-lock.json inside Node container (no host npm)
+
+First time: ./scripts/podman compose-build && ./scripts/podman install
+Lockfile out of sync: ./scripts/podman lock-update
+EOF
+}
+
+cmd="${1:-}"
+shift || true
+
+case "$cmd" in
+  install) podman compose run --rm install ;;
+  dev) podman compose up dev ;;
+  test) podman compose run --rm test ;;
+  test-cov) podman compose run --rm test-cov ;;
+  build) podman compose run --rm build ;;
+  build-babylon) podman compose run --rm build ;; # alias
+  shell) podman compose run --rm shell ;;
+  compose-build)
+    for s in install dev test test-cov build shell; do
+      echo "=== compose build: $s ==="
+      podman compose build "$s"
+    done
+    ;;
+  build-image) podman build -f Containerfile -t solids-hunter:dev "$ROOT" ;;
+  lock-update)
+    podman run --rm -v "$ROOT:/app:Z" -w /app docker.io/library/node:22-bookworm-slim \
+      sh -c "npm install --no-audit --no-fund"
+    echo "Updated package-lock.json (written via bind mount). Rebuild: ./scripts/podman compose-build" ;;
+  ""|help|-h|--help) usage ;;
+  *)
+    echo "Unknown command: $cmd" >&2
+    usage >&2
+    exit 1
+    ;;
+esac

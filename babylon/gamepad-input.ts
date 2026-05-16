@@ -11,6 +11,8 @@ export type GamepadInputFrame = {
 
 const DEADZONE = 0.18;
 const TRIGGER_THRESHOLD = 0.45;
+const MOVE_RESPONSE_EXPONENT = 1.45;
+const LOOK_RESPONSE_EXPONENT = 2.15;
 
 export const EMPTY_GAMEPAD_INPUT: GamepadInputFrame = {
   connected: false,
@@ -30,6 +32,20 @@ export function applyStickDeadzone(value: number, deadzone = DEADZONE): number {
   return Math.sign(value) * Math.min(1, (mag - deadzone) / (1 - deadzone));
 }
 
+export function applyStickResponseCurve(value: number, exponent: number): number {
+  if (!Number.isFinite(value)) return 0;
+  const clamped = Math.min(1, Math.abs(value));
+  return Math.sign(value) * Math.pow(clamped, exponent);
+}
+
+function moveAxis(value: number): number {
+  return applyStickResponseCurve(applyStickDeadzone(value), MOVE_RESPONSE_EXPONENT);
+}
+
+function lookAxis(value: number): number {
+  return applyStickResponseCurve(applyStickDeadzone(value), LOOK_RESPONSE_EXPONENT);
+}
+
 function buttonDown(button: GamepadButton | undefined): boolean {
   return !!button && (button.pressed || button.value >= TRIGGER_THRESHOLD);
 }
@@ -47,10 +63,10 @@ export function readGamepadInput(gamepad: Gamepad | null | undefined): GamepadIn
 
   return {
     connected: true,
-    moveX: applyStickDeadzone(gamepad.axes[0] ?? 0),
-    moveForward: -applyStickDeadzone(gamepad.axes[1] ?? 0),
-    lookX: applyStickDeadzone(gamepad.axes[2] ?? 0),
-    lookY: applyStickDeadzone(gamepad.axes[3] ?? 0),
+    moveX: moveAxis(gamepad.axes[0] ?? 0),
+    moveForward: -moveAxis(gamepad.axes[1] ?? 0),
+    lookX: lookAxis(gamepad.axes[2] ?? 0),
+    lookY: lookAxis(gamepad.axes[3] ?? 0),
     shoot: buttonDown(gamepad.buttons[7]) || buttonDown(gamepad.buttons[5]),
     primary: buttonDown(gamepad.buttons[0]),
     menu:

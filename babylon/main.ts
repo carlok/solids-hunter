@@ -103,6 +103,9 @@ camera.attachControl(canvas, true);
 /** Keyboard walking is custom (constant speed). Built-in FreeCamera keyboard uses acceleration — stacks with arrows/WASD. */
 const kbInput = camera.inputs.attached.keyboard;
 if (kbInput) camera.inputs.remove(kbInput);
+/** Gamepad walking/looking is also custom. Babylon's built-in gamepad camera input can fly vertically. */
+const gamepadCameraInput = camera.inputs.attached.gamepad;
+if (gamepadCameraInput) camera.inputs.remove(gamepadCameraInput);
 camera.minZ = 0.05;
 camera.fov = (68 * Math.PI) / 180;
 const mouseInput = camera.inputs.attached.mouse as { angularSensibility?: number } | undefined;
@@ -153,6 +156,10 @@ let gameActive = false;
 const keys: Record<string, boolean> = {};
 let elapsedTime = 0;
 let previousGamepadInput: GamepadInputFrame = EMPTY_GAMEPAD_INPUT;
+let smoothedGamepadLookX = 0;
+let smoothedGamepadLookY = 0;
+let smoothedGamepadMoveX = 0;
+let smoothedGamepadMoveForward = 0;
 
 const shootRuntime = {
   score: 0,
@@ -537,14 +544,25 @@ engine.runRenderLoop(() => {
 
   const freeze = gameFeedback.paused;
   if (!freeze && gameActive && arena) {
-    const MV = 3.85;
-    const GAMEPAD_LOOK = 1.25;
+    const KEYBOARD_MOVE_SPEED = 3.85;
+    const GAMEPAD_MOVE_SPEED = 3.15;
+    const GAMEPAD_LOOK = 0.78;
+    const GAMEPAD_LOOK_SMOOTHING = 7.5;
+    const GAMEPAD_MOVE_SMOOTHING = 9;
     if (gamepadInput.connected) {
-      camera.rotation.y += gamepadInput.lookX * GAMEPAD_LOOK * dt;
-      camera.rotation.x += gamepadInput.lookY * GAMEPAD_LOOK * dt;
+      const lookAlpha = 1 - Math.exp(-GAMEPAD_LOOK_SMOOTHING * dt);
+      smoothedGamepadLookX += (gamepadInput.lookX - smoothedGamepadLookX) * lookAlpha;
+      smoothedGamepadLookY += (gamepadInput.lookY - smoothedGamepadLookY) * lookAlpha;
+      camera.rotation.y += smoothedGamepadLookX * GAMEPAD_LOOK * dt;
+      camera.rotation.x += smoothedGamepadLookY * GAMEPAD_LOOK * dt;
       const pitchLimit = (80 * Math.PI) / 180;
       camera.rotation.x = Math.min(pitchLimit, Math.max(-pitchLimit, camera.rotation.x));
       camera.rotation.z = 0;
+    } else {
+      smoothedGamepadLookX = 0;
+      smoothedGamepadLookY = 0;
+      smoothedGamepadMoveX = 0;
+      smoothedGamepadMoveForward = 0;
     }
 
     const forward = camera.getDirection(new Vector3(0, 0, 1));
@@ -574,14 +592,18 @@ engine.runRenderLoop(() => {
     }
     let analogMove = 1;
     if (gamepadInput.connected) {
-      mx += forward.x * gamepadInput.moveForward + right.x * gamepadInput.moveX;
-      mz += forward.z * gamepadInput.moveForward + right.z * gamepadInput.moveX;
-      analogMove = Math.min(1, Math.hypot(gamepadInput.moveForward, gamepadInput.moveX));
+      const moveAlpha = 1 - Math.exp(-GAMEPAD_MOVE_SMOOTHING * dt);
+      smoothedGamepadMoveX += (gamepadInput.moveX - smoothedGamepadMoveX) * moveAlpha;
+      smoothedGamepadMoveForward += (gamepadInput.moveForward - smoothedGamepadMoveForward) * moveAlpha;
+      mx += forward.x * smoothedGamepadMoveForward - right.x * smoothedGamepadMoveX;
+      mz += forward.z * smoothedGamepadMoveForward - right.z * smoothedGamepadMoveX;
+      analogMove = Math.min(1, Math.hypot(smoothedGamepadMoveForward, smoothedGamepadMoveX));
     }
     const len = Math.hypot(mx, mz);
     if (len > 1e-10) {
-      mx = (mx / len) * MV * analogMove * dt;
-      mz = (mz / len) * MV * analogMove * dt;
+      const moveSpeed = gamepadInput.connected && !keyboardMove ? GAMEPAD_MOVE_SPEED : KEYBOARD_MOVE_SPEED;
+      mx = (mx / len) * moveSpeed * analogMove * dt;
+      mz = (mz / len) * moveSpeed * analogMove * dt;
       GameAudio.maybeFootstep(dt, true);
       const bound = xzPlayHalfLimit(arena.envSpawnHalfXZ);
       const cur = camera.position;
@@ -609,6 +631,10 @@ engine.runRenderLoop(() => {
     }
   } else {
     GameAudio.maybeFootstep(dt, false);
+  }
+
+  if (gameActive && arena && camera.position.y !== 1.7) {
+    camera.position.y = 1.7;
   }
 
   if (arena) {

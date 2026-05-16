@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   EMPTY_GAMEPAD_INPUT,
   applyStickDeadzone,
+  applyStickResponseCurve,
   firstUsableGamepad,
   gamepadButtonJustPressed,
   readGamepadInput,
@@ -46,6 +47,15 @@ describe('applyStickDeadzone', () => {
   });
 });
 
+describe('applyStickResponseCurve', () => {
+  it('keeps full deflection but softens partial stick input', () => {
+    expect(applyStickResponseCurve(1, 2.15)).toBe(1);
+    expect(applyStickResponseCurve(-1, 2.15)).toBe(-1);
+    expect(applyStickResponseCurve(0.5, 2.15)).toBeLessThan(0.5);
+    expect(applyStickResponseCurve(-0.5, 2.15)).toBeGreaterThan(-0.5);
+  });
+});
+
 describe('readGamepadInput', () => {
   it('returns an empty frame for missing or disconnected pads', () => {
     expect(readGamepadInput(null)).toEqual(EMPTY_GAMEPAD_INPUT);
@@ -72,10 +82,10 @@ describe('readGamepadInput', () => {
     );
 
     expect(frame.connected).toBe(true);
-    expect(frame.moveX).toBeCloseTo(0.5, 6);
+    expect(frame.moveX).toBeCloseTo(Math.pow(0.5, 1.45), 6);
     expect(frame.moveForward).toBe(1);
     expect(frame.lookX).toBe(1);
-    expect(frame.lookY).toBeCloseTo(-0.5, 6);
+    expect(frame.lookY).toBeCloseTo(-Math.pow(0.5, 2.15), 6);
     expect(frame.primary).toBe(true);
     expect(frame.shoot).toBe(true);
     expect(frame.menu).toBe(true);

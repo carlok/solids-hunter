@@ -722,7 +722,7 @@ export function liftRgb(rgb: number, t: number): number {
 }
 
 /** Minecraft-ish ground accents: flat patches + small voxels (no wall collision). */
-export type ArenaFloorStyle = 'lab' | 'dungeon' | 'forest' | 'ruins';
+export type ArenaFloorStyle = 'lab' | 'dungeon' | 'forest' | 'ruins' | 'duomo';
 
 export function addFloor(
   scene: Scene,
@@ -744,7 +744,8 @@ export function addFloor(
     lab: 'tiles',
     dungeon: 'bricks',
     forest: 'grass',
-    ruins: 'sand'
+    ruins: 'sand',
+    duomo: 'tiles',
   };
   stylePbrSurfaceMaterial(mat, roleMap[style] || 'floorMain');
   main.material = mat;
@@ -770,6 +771,10 @@ export function addFloor(
     ruins: [
       0xc8b8a8, 0xa89078, 0x8d6e63, 0xd7ccc8, 0x795548, 0xbcaaa4, 0xb5a090, 0x9a8070, 0xded0c8,
       0x887060,
+    ],
+    duomo: [
+      0xd8d0c8, 0xc9b9ad, 0xe2d8d1, 0xbcaea4, 0xf0e6dd, 0xc6c4c0, 0xd4c2ba, 0xb8b0aa, 0xe7ded6,
+      0xcfc0b8,
     ],
   };
   const patchColors = patchesByStyle[style];
@@ -830,7 +835,7 @@ export function addFloor(
   }
 
   const voxelN =
-    style === 'forest' ? 46 : style === 'ruins' ? 38 : style === 'dungeon' ? 34 : 30;
+    style === 'forest' ? 46 : style === 'ruins' ? 38 : style === 'dungeon' ? 34 : style === 'duomo' ? 20 : 30;
   for (let i = 0; i < voxelN; i++) {
     const bx = 0.32 + rnd() * 0.55;
     const bz = 0.32 + rnd() * 0.55;

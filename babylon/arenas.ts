@@ -1,18 +1,20 @@
 import type { Scene } from '@babylonjs/core';
 
 import type { ArenaBuildResult } from './arena-shared';
+import { buildDuomoScene } from './build-duomo';
 import { buildDungeonScene } from './build-dungeon';
 import { buildForestScene } from './build-forest';
 import { buildLabScene } from './build-lab';
 import { buildRuinsScene } from './build-ruins';
 
-export type ArenaName = 'lab' | 'dungeon' | 'forest' | 'ruins';
+export type ArenaName = 'lab' | 'dungeon' | 'forest' | 'ruins' | 'duomo';
 
 const ARENA_ALIASES: Record<string, ArenaName> = {
   lab: 'lab',
   dungeon: 'dungeon',
   forest: 'forest',
   ruins: 'ruins',
+  duomo: 'duomo',
 };
 
 export function normalizeArenaName(raw: string | null | undefined): ArenaName {
@@ -28,6 +30,8 @@ export function buildArenaScene(scene: Scene, name: ArenaName): ArenaBuildResult
       return buildForestScene(scene);
     case 'ruins':
       return buildRuinsScene(scene);
+    case 'duomo':
+      return buildDuomoScene(scene);
     case 'lab':
     default:
       return buildLabScene(scene);

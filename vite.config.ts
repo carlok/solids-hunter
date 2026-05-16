@@ -3,7 +3,7 @@ import type { Plugin } from 'vite';
 import { resolve } from 'node:path';
 import fs from 'node:fs';
 
-/** Serve `/assets/*` from repo-root `assets/` for WAV dev. */
+/** Serve `/assets/*` from repo-root `assets/` for static dev assets. */
 function rootAssetsPlugin(): Plugin {
   const assetsRoot = resolve(__dirname, 'assets');
   return {
@@ -17,6 +17,8 @@ function rootAssetsPlugin(): Plugin {
         if (!fs.existsSync(fp) || !fs.statSync(fp).isFile()) return next();
         const ctype = raw.endsWith('.wav')
           ? 'audio/wav'
+          : raw.endsWith('.glb')
+            ? 'model/gltf-binary'
           : raw.endsWith('.env')
             ? 'application/octet-stream'
             : 'application/octet-stream';
@@ -27,7 +29,7 @@ function rootAssetsPlugin(): Plugin {
   };
 }
 
-/** Production: copy repo `assets/sounds` → `dist-babylon/assets/sounds`, textures for IBL. */
+/** Production: copy repo static assets needed by the Babylon runtime. */
 function copySoundsToDistPlugin(): Plugin {
   return {
     name: 'copy-repo-sounds-to-dist',
@@ -38,6 +40,20 @@ function copySoundsToDistPlugin(): Plugin {
       if (fs.existsSync(texSrc)) {
         fs.mkdirSync(texDest, { recursive: true });
         fs.cpSync(texSrc, texDest, { recursive: true });
+      }
+
+      const modelsSrc = resolve(__dirname, 'assets/models');
+      const modelsDest = resolve(__dirname, 'dist-babylon/assets/models');
+      if (fs.existsSync(modelsSrc)) {
+        fs.mkdirSync(modelsDest, { recursive: true });
+        fs.cpSync(modelsSrc, modelsDest, { recursive: true });
+      }
+
+      const duomoSrc = resolve(__dirname, 'assets/duomo');
+      const duomoDest = resolve(__dirname, 'dist-babylon/assets/duomo');
+      if (fs.existsSync(duomoSrc)) {
+        fs.mkdirSync(duomoDest, { recursive: true });
+        fs.cpSync(duomoSrc, duomoDest, { recursive: true });
       }
 
       const src = resolve(__dirname, 'assets/sounds');

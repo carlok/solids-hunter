@@ -36,7 +36,7 @@ make dev
 # or: ./scripts/podman dev
 ```
 
-Open **[http://127.0.0.1:5173/](http://127.0.0.1:5173/)** (add `?env=lab`, `dungeon`, `forest`, or `ruins` if you like).
+Open **[http://127.0.0.1:5173/](http://127.0.0.1:5173/)** (add `?env=lab`, `dungeon`, `forest`, `ruins`, or `duomo` if you like).
 
 First time (or after `compose.yaml` / `Containerfile` changes): `./scripts/podman compose-build && ./scripts/podman install`.
 

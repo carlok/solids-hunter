@@ -1,0 +1,114 @@
+{
+  "id": "milan_duomo_plan_rhythm_v0",
+  "source": {
+    "url": "https://commons.wikimedia.org/wiki/File:Pianta_del_Duomo_di_Milano.jpg",
+    "originalImageUrl": "https://upload.wikimedia.org/wikipedia/commons/b/ba/Pianta_del_Duomo_di_Milano.jpg",
+    "license": "CC BY-SA 4.0",
+    "attribution": "Unknown author / Istituto Campana per l'Istruzione Permanente, via Wikimedia Commons",
+    "note": "Approximate rhythmic extraction from a historical raster plan. This is not a measured architectural survey."
+  },
+  "coordinateSystem": {
+    "unit": "bay",
+    "origin": "main nave centerline at west entrance",
+    "xAxis": "left-right across the nave",
+    "zAxis": "west entrance toward the east apse",
+    "centralNaveInteraxisMeters": 19.3,
+    "sideAisleApproxInteraxisMeters": "9-10",
+    "suggestedGameplayCentralInteraxis": 11.2,
+    "suggestedGameplaySideInteraxis": 5.7
+  },
+  "assetDefaults": {
+    "freeStandingPillar": {
+      "asset": "/assets/duomo/models/milan-duomo-pillar-shaft.glb",
+      "radiusMeters": 1.35,
+      "heightMeters": 24,
+      "gameScale": 0.55,
+      "material": "candoglia_stylized_marble",
+      "collision": "simple_aabb"
+    },
+    "engagedWallPier": {
+      "type": "attached_polystyle_pier",
+      "heightMeters": 16,
+      "gameScale": 0.55,
+      "material": "darkened_marble_stone",
+      "collision": "wall"
+    }
+  },
+  "freeStandingPillars": [
+    {
+      "zone": "nave",
+      "xValues": [-1.5, -0.5, 0.5, 1.5],
+      "zValues": [1, 2, 3, 4, 5, 6, 7, 8],
+      "role": "primary_pillar_forest"
+    },
+    {
+      "zone": "transept_crossing",
+      "xValues": [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5],
+      "zValues": [9],
+      "role": "wide_cross_axis"
+    },
+    {
+      "zone": "choir",
+      "xValues": [-1.5, -0.5, 0.5, 1.5],
+      "zValues": [10, 11, 12],
+      "role": "continuing_longitudinal_rhythm"
+    },
+    {
+      "zone": "apse",
+      "xValues": [-1, 0, 1],
+      "zValues": [13],
+      "role": "compressed_terminal_rhythm"
+    }
+  ],
+  "engagedWallPillars": [
+    {
+      "zone": "left_nave_wall",
+      "x": -2.65,
+      "zValues": [1, 2, 3, 4, 5, 6, 7, 8]
+    },
+    {
+      "zone": "right_nave_wall",
+      "x": 2.65,
+      "zValues": [1, 2, 3, 4, 5, 6, 7, 8]
+    },
+    {
+      "zone": "transept_ends",
+      "points": [
+        { "x": -3.8, "z": 8.5 },
+        { "x": -3.8, "z": 9.5 },
+        { "x": 3.8, "z": 8.5 },
+        { "x": 3.8, "z": 9.5 }
+      ]
+    },
+    {
+      "zone": "choir_walls",
+      "points": [
+        { "x": -2.2, "z": 10 },
+        { "x": -2.2, "z": 11 },
+        { "x": -2, "z": 12 },
+        { "x": 2.2, "z": 10 },
+        { "x": 2.2, "z": 11 },
+        { "x": 2, "z": 12 }
+      ]
+    }
+  ],
+  "spatialZones": [
+    {
+      "id": "five_aisle_nave",
+      "zRange": [0.5, 8.5],
+      "aisleBandsX": [-2, -1, 0, 1, 2],
+      "description": "Four longitudinal freestanding pillar rows divide the nave into five aisles."
+    },
+    {
+      "id": "wide_transept",
+      "zRange": [8.2, 9.8],
+      "xRange": [-4, 4],
+      "description": "A widened cross-axis interrupts the nave rhythm and creates broader lateral space."
+    },
+    {
+      "id": "choir_and_apse",
+      "zRange": [9.8, 13.5],
+      "description": "The grid continues, then compresses toward a polygonal apse."
+    }
+  ]
+}

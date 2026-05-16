@@ -1,0 +1,48 @@
+{
+  "id": "solidshunter_duomo_arena_v0",
+  "intent": "A playable, stylized Milan Duomo-inspired arena built as a forest of polystyle pillars, not an engineering reconstruction.",
+  "knownLimitations": [
+    "The source image is a historical raster plan, not CAD.",
+    "The ceiling/vaults are intentionally absent for now.",
+    "The plan rhythm is compressed and scaled for gameplay readability.",
+    "The visual goal is cathedral-like spatial rhythm: vertical shafts, aisles, wall piers, and apse compression."
+  ],
+  "playerScale": {
+    "eyeHeightMeters": 1.7,
+    "babylonUnit": "1 meter before game scaling",
+    "arenaGameScale": 0.55
+  },
+  "structure": {
+    "mainExperience": "Move through a repeated nave grid of tall clustered pillars.",
+    "nave": "Four interior rows create five aisle bands.",
+    "transept": "A wider horizontal bay breaks the longitudinal rhythm.",
+    "choir": "The pillar grid continues toward a narrowed apse.",
+    "walls": "Low perimeter and engaged piers suggest the cathedral envelope without enclosing every historical wall."
+  },
+  "materials": {
+    "dominant": "warm pale Candoglia-like marble",
+    "secondary": "aged dark stone in wall bases and pier shadows",
+    "floor": "large pale marble slabs with subtle tint variation",
+    "lighting": "cool daylight from above with warm bounce and light fog"
+  },
+  "gameplay": {
+    "spacingCorrection": "The first playable pass deliberately compresses the real building, but preserves the important ratio: wide central nave spacing, side aisles roughly half as wide, and pillar bases no longer visually crowding the player.",
+    "referenceDimensions": {
+      "centralNaveInteraxisMeters": 19.3,
+      "sideAisleApproxInteraxisMeters": "9-10",
+      "pillarHeightMetersIncludingCapital": 24,
+      "pillarDiameterMeters": 2.5,
+      "pillarBaseDiameterMeters": 3.4,
+      "source": "Veneranda Fabbrica del Duomo di Milano / Google Arts & Culture story on the central nave"
+    },
+    "playableApproximation": {
+      "centralNaveInteraxisGameUnits": 11.2,
+      "sideAisleInteraxisGameUnits": 5.7,
+      "pillarBaseDiameterGameUnits": 2.04,
+      "longitudinalBayGameUnits": 7.8
+    },
+    "collision": "Freestanding pillars use simple collision boxes; decorative wall piers and small floor details are non-blocking unless part of perimeter walls.",
+    "targetVisibility": "Long aisles remain clear enough for target visibility and shooting.",
+    "spawn": "Near the west entrance centerline, looking into the pillar forest."
+  }
+}

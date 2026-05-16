@@ -27,6 +27,7 @@ describe('normalizeArenaName', () => {
   it('trims and lowercases known arenas', () => {
     expect(normalizeArenaName('  FOREST  ')).toBe('forest');
     expect(normalizeArenaName('Ruins')).toBe('ruins');
+    expect(normalizeArenaName('Duomo')).toBe('duomo');
   });
 
   it('maps unknown names to lab', () => {
@@ -38,6 +39,7 @@ describe('arenaNameFromSearch', () => {
   it('reads env query', () => {
     expect(arenaNameFromSearch('?env=dungeon')).toBe('dungeon');
     expect(arenaNameFromSearch('?env=forest&x=1')).toBe('forest');
+    expect(arenaNameFromSearch('?env=duomo')).toBe('duomo');
   });
 
   it('defaults when env missing or invalid', () => {

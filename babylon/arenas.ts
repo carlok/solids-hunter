@@ -5,15 +5,13 @@ import { buildDuomoScene } from './build-duomo';
 import { buildDungeonScene } from './build-dungeon';
 import { buildForestScene } from './build-forest';
 import { buildLabScene } from './build-lab';
-import { buildRuinsScene } from './build-ruins';
 
-export type ArenaName = 'lab' | 'dungeon' | 'forest' | 'ruins' | 'duomo';
+export type ArenaName = 'lab' | 'dungeon' | 'forest' | 'duomo';
 
 const ARENA_ALIASES: Record<string, ArenaName> = {
   lab: 'lab',
   dungeon: 'dungeon',
   forest: 'forest',
-  ruins: 'ruins',
   duomo: 'duomo',
 };
 
@@ -28,8 +26,6 @@ export function buildArenaScene(scene: Scene, name: ArenaName): ArenaBuildResult
       return buildDungeonScene(scene);
     case 'forest':
       return buildForestScene(scene);
-    case 'ruins':
-      return buildRuinsScene(scene);
     case 'duomo':
       return buildDuomoScene(scene);
     case 'lab':

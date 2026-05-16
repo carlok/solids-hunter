@@ -1,6 +1,6 @@
 # Solids Hunter
 
-First-person hunt built with [Babylon.js](https://www.babylonjs.com/). Pick an arena, read the round rule, lock the pointer, then shoot only solids that satisfy the rule.
+First-person hunt built with [Babylon.js](https://www.babylonjs.com/). Pick an arena, read the round rule, then shoot only solids that satisfy the rule with desktop, gamepad, or mobile controls.
 
 ## Hunt rules
 
@@ -24,7 +24,7 @@ Each solid picks one of four **movement modes**:
 
 ## Look and render quality
 
-Environments use a **sky dome** with a vertical gradient, directional sun, and balanced lighting. **Forest** and **ruins** use darker floors than perimeter walls; **dungeon**, **lab**, and stone use **`envTintHex`** for stable per-surface variation. The renderer uses antialiasing, fog where appropriate, and **ACES-style tone mapping** for readability.
+Environments use a **sky dome** with a vertical gradient, directional sun, and balanced lighting. **Forest** uses darker floors than perimeter walls; **dungeon**, **lab**, **duomo**, and stone use **`envTintHex`** for stable per-surface variation. The renderer uses antialiasing, fog where appropriate, and **ACES-style tone mapping** for readability.
 
 ## Run locally (Podman only — no host Node/npm)
 
@@ -36,11 +36,11 @@ make dev
 # or: ./scripts/podman dev
 ```
 
-Open **[http://127.0.0.1:5173/](http://127.0.0.1:5173/)** (add `?env=lab`, `dungeon`, `forest`, `ruins`, or `duomo` if you like).
+Open **[http://127.0.0.1:5173/](http://127.0.0.1:5173/)** (add `?env=lab`, `dungeon`, `forest`, or `duomo` if you like).
 
 First time (or after `compose.yaml` / `Containerfile` changes): `./scripts/podman compose-build && ./scripts/podman install`.
 
-**Pointer lock:** Chromium browsers need a **secure context** (`https://` or `http://localhost` / `http://127.0.0.1`). Safari and most mobile browsers do not support pointer lock for this style of game — use a current desktop **Chrome**, **Edge**, or **Firefox**.
+**Pointer lock:** Desktop mouse play needs a **secure context** (`https://` or `http://localhost` / `http://127.0.0.1`). Mobile play does not rely on pointer lock: rotate to landscape, use the left thumb pad to move, drag the right side to look, and tap **FIRE** to shoot.
 
 ### Tests and coverage
 
@@ -75,10 +75,11 @@ If WAVs fail to decode, the game falls back to short synthesized tones where imp
 
 ## Controls
 
-- **Move:** WASD / arrow keys, or gamepad left stick  
-- **Look:** mouse (after pointer lock), or gamepad right stick  
-- **Shoot:** left-click or gamepad RT/R2 — tracer from view to hit (or max range), then green/red flash on targets.  
+- **Move:** WASD / arrow keys, gamepad left stick, or mobile left thumb pad  
+- **Look:** mouse (after pointer lock), gamepad right stick, or mobile right-side drag  
+- **Shoot:** left-click, gamepad RT/R2, or mobile **FIRE** button — tracer from view to hit (or max range), then green/red flash on targets.  
 - **Gamepad:** A / bottom face button starts or resumes, Start/Menu pauses, RT/R2 shoots.
+- **Mobile:** rotate to landscape before playing; portrait shows a rotate prompt.
 - **Pause:** Esc  
 - **Menu:** top-left hamburger  
 

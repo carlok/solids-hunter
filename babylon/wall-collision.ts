@@ -32,8 +32,8 @@ export function aabbFromCenterAndSize(
 }
 
 const PLAYER_SIZE = new Vector3(0.5, 1.8, 0.5);
-/** Entity foot AABB size (world axes); slightly larger than mesh to limit rotation bleed into walls. */
-export const ENTITY_FOOT_SIZE = new Vector3(0.58, 0.92, 0.58);
+/** Entity foot AABB size (world axes); covers the visible solid so targets do not clip into pillars/walls. */
+export const ENTITY_FOOT_SIZE = new Vector3(1.18, 0.92, 1.18);
 const _pMin = new Vector3();
 const _pMax = new Vector3();
 const _eMin = new Vector3();

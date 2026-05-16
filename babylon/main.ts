@@ -232,6 +232,9 @@ function showHuntScreen(): void {
   if (!arena || !selectedEnv) return;
   hideLockErrBanner();
   resetHitFeedbackState();
+  req<HTMLDivElement>('round-end-label').textContent = 'ROUND COMPLETE';
+  req<HTMLDivElement>('round-end-title').textContent = 'ALL TARGETS ELIMINATED';
+  req<HTMLDivElement>('round-end-points').textContent = 'POINTS';
   shootRuntime.shotsThisRound = 0;
   shootRuntime.score = 0;
   shootRuntime.roundEnded = false;
@@ -281,6 +284,9 @@ const shooter = attachBabylonShooting({
     targetsEl: req('targets-el'),
     flashEl: req('flash'),
     roundEndEl,
+    roundEndLabelEl: req('round-end-label'),
+    roundEndTitleEl: req('round-end-title'),
+    roundEndPointsEl: req('round-end-points'),
     finalScoreEl: req('final-score'),
   },
   runtime: shootRuntime,
@@ -595,12 +601,16 @@ engine.runRenderLoop(() => {
       const moveAlpha = 1 - Math.exp(-GAMEPAD_MOVE_SMOOTHING * dt);
       smoothedGamepadMoveX += (gamepadInput.moveX - smoothedGamepadMoveX) * moveAlpha;
       smoothedGamepadMoveForward += (gamepadInput.moveForward - smoothedGamepadMoveForward) * moveAlpha;
+      if (gamepadInput.moveX === 0 && Math.abs(smoothedGamepadMoveX) < 0.012) smoothedGamepadMoveX = 0;
+      if (gamepadInput.moveForward === 0 && Math.abs(smoothedGamepadMoveForward) < 0.012) {
+        smoothedGamepadMoveForward = 0;
+      }
       mx += forward.x * smoothedGamepadMoveForward - right.x * smoothedGamepadMoveX;
       mz += forward.z * smoothedGamepadMoveForward - right.z * smoothedGamepadMoveX;
       analogMove = Math.min(1, Math.hypot(smoothedGamepadMoveForward, smoothedGamepadMoveX));
     }
     const len = Math.hypot(mx, mz);
-    if (len > 1e-10) {
+    if (len > 0.01) {
       const moveSpeed = gamepadInput.connected && !keyboardMove ? GAMEPAD_MOVE_SPEED : KEYBOARD_MOVE_SPEED;
       mx = (mx / len) * moveSpeed * analogMove * dt;
       mz = (mz / len) * moveSpeed * analogMove * dt;

@@ -22,6 +22,9 @@ export type BabylonShootHud = {
   targetsEl: HTMLElement;
   flashEl: HTMLElement;
   roundEndEl: HTMLElement;
+  roundEndLabelEl: HTMLElement;
+  roundEndTitleEl: HTMLElement;
+  roundEndPointsEl: HTMLElement;
   finalScoreEl: HTMLElement;
 };
 
@@ -46,6 +49,29 @@ export type BabylonShooter = {
 function updateHud(runtime: BabylonGameRuntime, hud: BabylonShootHud): void {
   hud.scoreEl.textContent = String(runtime.score);
   hud.targetsEl.textContent = String(runtime.matchLeft);
+}
+
+export function applyWrongHitPenalty(score: number): { score: number; gameOver: boolean } {
+  const nextScore = Math.max(0, score - 5);
+  return { score: nextScore, gameOver: score > 0 && nextScore === 0 };
+}
+
+function showRoundEnd(
+  runtime: BabylonGameRuntime,
+  hud: BabylonShootHud,
+  shootContext: BabylonShootContext,
+  label: string,
+  title: string,
+  pointsLabel = 'POINTS',
+): void {
+  runtime.roundEnded = true;
+  document.exitPointerLock();
+  hud.roundEndLabelEl.textContent = label;
+  hud.roundEndTitleEl.textContent = title;
+  hud.roundEndPointsEl.textContent = pointsLabel;
+  hud.roundEndEl.classList.remove('hidden');
+  hud.finalScoreEl.textContent = String(runtime.score);
+  shootContext.onRoundComplete();
 }
 
 function flash(hud: BabylonShootHud, color: string, alpha: number): void {
@@ -155,19 +181,20 @@ export function attachBabylonShooting(options: {
       if (runtime.matchLeft <= 0) {
         const endRound = (): void => {
           GameAudio.roundWin();
-          runtime.roundEnded = true;
-          document.exitPointerLock();
-          hud.roundEndEl.classList.remove('hidden');
-          hud.finalScoreEl.textContent = String(runtime.score);
-          shootContext.onRoundComplete();
+          showRoundEnd(runtime, hud, shootContext, 'ROUND COMPLETE', 'ALL TARGETS ELIMINATED');
         };
         scheduleEndRoundAfterCorrectCoach(ent, coachThis, shootContext.getMatchLeft(), endRound);
       }
     } else {
-      runtime.score = Math.max(0, runtime.score - 5);
+      const penalty = applyWrongHitPenalty(runtime.score);
+      runtime.score = penalty.score;
       flash(hud, '#ff2200', 0.42);
       GameAudio.hitWrong();
       updateHud(runtime, hud);
+      if (penalty.gameOver) {
+        showRoundEnd(runtime, hud, shootContext, 'GAME OVER', 'SCORE RETURNED TO ZERO', 'FINAL SCORE');
+        return true;
+      }
       onHitWrongAfterScoring(ent, coachThis);
     }
     return true;

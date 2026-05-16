@@ -1,7 +1,10 @@
+import { NullEngine, Scene, Vector3 } from '@babylonjs/core';
 import { describe, it, expect } from 'vitest';
 
 import { arenaNameFromSearch, normalizeArenaName } from '../../babylon/arenas';
+import { buildDuomoScene } from '../../babylon/build-duomo';
 import { xzPlayHalfLimit } from '../../babylon/entity-motion';
+import { hitsWall, entityHitsWallAt } from '../../babylon/wall-collision';
 
 describe('xzPlayHalfLimit', () => {
   it('caps at 29.8 when envSpawnHalfXZ is large (forest/ruins)', () => {
@@ -49,5 +52,22 @@ describe('arenaNameFromSearch', () => {
   it('defaults when env missing or invalid', () => {
     expect(arenaNameFromSearch('')).toBe('lab');
     expect(arenaNameFromSearch('?env=unknown')).toBe('lab');
+  });
+});
+
+describe('duomo collision', () => {
+  it('blocks engaged external pillars for player and target movement', () => {
+    const engine = new NullEngine();
+    const scene = new Scene(engine);
+    const arena = buildDuomoScene(scene);
+    const firstExternalPillar = new Vector3(30.3975, 1.7, -53.075);
+
+    expect(hitsWall(firstExternalPillar, arena.wallBoxes)).toBe(true);
+    expect(entityHitsWallAt(new Vector3(firstExternalPillar.x, 1.45, firstExternalPillar.z), arena.wallBoxes))
+      .toBe(true);
+
+    arena.dispose();
+    scene.dispose();
+    engine.dispose();
   });
 });

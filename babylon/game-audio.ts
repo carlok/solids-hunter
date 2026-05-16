@@ -40,7 +40,7 @@ function resume(): void {
   if (c && c.state === 'suspended') void c.resume().catch(() => {});
 }
 
-function playBuffer(name: SoundName, vol: number, rate?: number): void {
+function playBuffer(name: SoundName, vol: number, rate?: number, maxDuration?: number): void {
   if (muted) return;
   const c = getCtx();
   if (!c) return;
@@ -58,6 +58,12 @@ function playBuffer(name: SoundName, vol: number, rate?: number): void {
   src.connect(g);
   g.connect(c.destination);
   src.start(0);
+  if (maxDuration !== undefined) {
+    const stopAt = c.currentTime + maxDuration;
+    g.gain.setValueAtTime(vol, c.currentTime);
+    g.gain.linearRampToValueAtTime(0.001, stopAt);
+    src.stop(stopAt + 0.02);
+  }
 }
 
 function beep(freq: number, dur: number, vol: number, type: OscillatorType = 'sine'): void {
@@ -184,7 +190,7 @@ export const GameAudio = {
     footCooldown -= dt;
     if (footCooldown > 0) return;
     footCooldown = 0.32;
-    playBuffer('footstep', 0.22, 0.85 + Math.random() * 0.2);
+    playBuffer('footstep', 0.22, 0.85 + Math.random() * 0.2, 0.09);
   },
   onEnterPlay(): void {},
   onLeavePlay(): void {},

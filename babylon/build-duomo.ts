@@ -180,7 +180,7 @@ function addPillarRows(scene: Scene, meshes: Mesh[], wallBoxes: WallAABB[]): voi
 function addEngagedWallPiers(scene: Scene, meshes: Mesh[], wallBoxes: WallAABB[]): void {
   for (const side of [-1, 1]) {
     for (const z of [1, 2, 3, 4, 5, 6, 7, 8]) {
-      addDuomoPillar(scene, meshes, wallBoxes, bayX(side * 2.65), bayZ(z), PILLAR_HEIGHT * 0.9, false);
+      addDuomoPillar(scene, meshes, wallBoxes, bayX(side * 2.65), bayZ(z), PILLAR_HEIGHT * 0.9);
     }
   }
   for (const [x, z] of [
@@ -195,7 +195,7 @@ function addEngagedWallPiers(scene: Scene, meshes: Mesh[], wallBoxes: WallAABB[]
     [2.2, 11],
     [2, 12],
   ] as const) {
-    addDuomoPillar(scene, meshes, wallBoxes, bayX(x), bayZ(z), PILLAR_HEIGHT * 0.86, false);
+    addDuomoPillar(scene, meshes, wallBoxes, bayX(x), bayZ(z), PILLAR_HEIGHT * 0.86);
   }
 }
 

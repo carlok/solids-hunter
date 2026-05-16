@@ -1,7 +1,7 @@
 import { NullEngine, Scene, UniversalCamera, Vector3 } from '@babylonjs/core';
 import { describe, expect, it } from 'vitest';
 
-import { createCenterShotRay } from '../../babylon/shoot-input';
+import { applyWrongHitPenalty, createCenterShotRay } from '../../babylon/shoot-input';
 
 function expectVectorClose(actual: Vector3, expected: Vector3): void {
   expect(actual.x).toBeCloseTo(expected.x, 6);
@@ -30,5 +30,13 @@ describe('createCenterShotRay', () => {
 
     scene.dispose();
     engine.dispose();
+  });
+});
+
+describe('applyWrongHitPenalty', () => {
+  it('ends the round only when a nonzero score returns to zero', () => {
+    expect(applyWrongHitPenalty(20)).toEqual({ score: 15, gameOver: false });
+    expect(applyWrongHitPenalty(5)).toEqual({ score: 0, gameOver: true });
+    expect(applyWrongHitPenalty(0)).toEqual({ score: 0, gameOver: false });
   });
 });

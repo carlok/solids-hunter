@@ -69,6 +69,7 @@ export const gameFeedback = { paused: false };
  * Tied to arena {@link SpawnGameOptions.envSpawnHalfXZ}.
  */
 export function xzPlayHalfLimit(envSpawnHalfXZ: number): number {
+  if (envSpawnHalfXZ > 50) return envSpawnHalfXZ - 1.2;
   return Math.min(29.8, envSpawnHalfXZ - 1.2);
 }
 

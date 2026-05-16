@@ -4,29 +4,29 @@
   "knownLimitations": [
     "The source image is a historical raster plan, not CAD.",
     "The ceiling/vaults are intentionally absent for now.",
-    "The plan rhythm is compressed and scaled for gameplay readability.",
-    "The visual goal is cathedral-like spatial rhythm: vertical shafts, aisles, wall piers, and apse compression."
+    "The ceiling/vaults and detailed wall envelope are intentionally absent for now.",
+    "The visual goal is cathedral-like spatial rhythm: full-height vertical shafts, five aisles, and apse compression."
   ],
   "playerScale": {
     "eyeHeightMeters": 1.7,
-    "babylonUnit": "1 meter before game scaling",
-    "arenaGameScale": 0.55
+    "babylonUnit": "1 meter",
+    "arenaGameScale": 1
   },
   "structure": {
     "mainExperience": "Move through a repeated nave grid of tall clustered pillars.",
     "nave": "Four interior rows create five aisle bands.",
     "transept": "A wider horizontal bay breaks the longitudinal rhythm.",
     "choir": "The pillar grid continues toward a narrowed apse.",
-    "walls": "Low perimeter and engaged piers suggest the cathedral envelope without enclosing every historical wall."
+    "walls": "No enclosing walls in this pass: the experience is floor, pillars, and azure sky."
   },
   "materials": {
     "dominant": "warm pale Candoglia-like marble",
     "secondary": "aged dark stone in wall bases and pier shadows",
-    "floor": "large pale marble slabs with subtle tint variation",
-    "lighting": "cool daylight from above with warm bounce and light fog"
+    "floor": "texture image at assets/duomo/floor.jpg",
+    "lighting": "cool daylight from above with warm bounce and azure sky"
   },
   "gameplay": {
-    "spacingCorrection": "The first playable pass deliberately compresses the real building, but preserves the important ratio: wide central nave spacing, side aisles roughly half as wide, and pillar bases no longer visually crowding the player.",
+    "spacingCorrection": "The playable Duomo arena now uses the real-world reference proportions directly where available: 24m pillar height, 3.4m base diameter, 19.3m central nave interaxis, and side aisles at about half the central span.",
     "referenceDimensions": {
       "centralNaveInteraxisMeters": 19.3,
       "sideAisleApproxInteraxisMeters": "9-10",
@@ -36,10 +36,11 @@
       "source": "Veneranda Fabbrica del Duomo di Milano / Google Arts & Culture story on the central nave"
     },
     "playableApproximation": {
-      "centralNaveInteraxisGameUnits": 11.2,
-      "sideAisleInteraxisGameUnits": 5.7,
-      "pillarBaseDiameterGameUnits": 2.04,
-      "longitudinalBayGameUnits": 7.8
+      "centralNaveInteraxisGameUnits": 19.3,
+      "sideAisleInteraxisGameUnits": 9.65,
+      "pillarBaseDiameterGameUnits": 3.4,
+      "pillarHeightGameUnits": 24,
+      "longitudinalBayGameUnits": 9.65
     },
     "collision": "Freestanding pillars use simple collision boxes; decorative wall piers and small floor details are non-blocking unless part of perimeter walls.",
     "targetVisibility": "Long aisles remain clear enough for target visibility and shooting.",

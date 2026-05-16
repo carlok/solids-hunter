@@ -14,22 +14,23 @@
     "zAxis": "west entrance toward the east apse",
     "centralNaveInteraxisMeters": 19.3,
     "sideAisleApproxInteraxisMeters": "9-10",
-    "suggestedGameplayCentralInteraxis": 11.2,
-    "suggestedGameplaySideInteraxis": 5.7
+    "suggestedGameplayCentralInteraxis": 19.3,
+    "suggestedGameplaySideInteraxis": 9.65,
+    "suggestedGameplayLongitudinalBay": 9.65
   },
   "assetDefaults": {
     "freeStandingPillar": {
       "asset": "/assets/duomo/models/milan-duomo-pillar-shaft.glb",
       "radiusMeters": 1.35,
       "heightMeters": 24,
-      "gameScale": 0.55,
+      "gameScale": 1,
       "material": "candoglia_stylized_marble",
       "collision": "simple_aabb"
     },
     "engagedWallPier": {
       "type": "attached_polystyle_pier",
-      "heightMeters": 16,
-      "gameScale": 0.55,
+      "heightMeters": 21,
+      "gameScale": 1,
       "material": "darkened_marble_stone",
       "collision": "wall"
     }

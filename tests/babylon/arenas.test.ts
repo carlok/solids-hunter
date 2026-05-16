@@ -15,6 +15,10 @@ describe('xzPlayHalfLimit', () => {
   it('still caps at 29.8 when envSpawnHalfXZ - 1.2 would exceed it', () => {
     expect(xzPlayHalfLimit(32)).toBe(29.8);
   });
+
+  it('allows oversized architecture arenas to keep their walking scale', () => {
+    expect(xzPlayHalfLimit(78)).toBe(76.8);
+  });
 });
 
 describe('normalizeArenaName', () => {

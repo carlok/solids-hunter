@@ -19,6 +19,10 @@ function rootAssetsPlugin(): Plugin {
           ? 'audio/wav'
           : raw.endsWith('.glb')
             ? 'model/gltf-binary'
+          : raw.endsWith('.jpg') || raw.endsWith('.jpeg')
+            ? 'image/jpeg'
+          : raw.endsWith('.png')
+            ? 'image/png'
           : raw.endsWith('.env')
             ? 'application/octet-stream'
             : 'application/octet-stream';

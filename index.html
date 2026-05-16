@@ -27,9 +27,9 @@
     <h2 id="help-title">HELP</h2>
     <p><strong>Solids Hunter</strong> is a first-person hunt: each round you get a <strong>boolean rule</strong> (sometimes simple, sometimes with <strong>AND</strong>, <strong>OR</strong>, or <strong>NOT</strong>). Only raycast-shoot solids that satisfy the rule.</p>
     <ul>
-      <li><strong>Move:</strong> WASD / arrow keys, or gamepad left stick</li>
-      <li><strong>Look:</strong> mouse (pointer lock after you start), or gamepad right stick</li>
-      <li><strong>Shoot:</strong> left-click, or gamepad RT/R2</li>
+      <li><strong>Move:</strong> WASD / arrow keys, gamepad left stick, or mobile left thumb pad</li>
+      <li><strong>Look:</strong> mouse (pointer lock after you start), gamepad right stick, or drag the right side of the screen on mobile</li>
+      <li><strong>Shoot:</strong> left-click, gamepad RT/R2, or mobile FIRE button</li>
       <li><strong>Gamepad:</strong> A starts/resumes; Start/Menu pauses</li>
       <li><strong>Rule:</strong> shown in full on the hunt screen; during play it stays at the <strong>top center</strong> of the HUD</li>
       <li><strong>Sound:</strong> <strong>M</strong> toggles mute anytime; arena / rule / pause screens also have a <strong>Sound: ON/OFF</strong> button; in-game, top-left icon or <strong>M</strong> (mute also silences spoken coach lines)</li>
@@ -56,7 +56,7 @@
     <h2 id="credits-title">CREDITS</h2>
     <p><strong>Solids Hunter</strong></p>
     <p>By <strong>Carlo Perassi</strong>.</p>
-    <p>Version <code>2026-05-16-17-27</code></p>
+    <p>Version <code>2026-05-16-18-49</code></p>
     <p>Source &amp; updates: <a href="https://github.com/carlok/solidshunter" target="_blank" rel="noopener">github.com/carlok/solidshunter</a></p>
     <p>Built with <a href="https://www.babylonjs.com/" target="_blank" rel="noopener">Babylon.js</a> and Web Pointer Lock. Procedural environments and shapes; a small bundled <abbr title="image-based lighting">IBL</abbr> map drives PBR reflections.</p>
     <p style="margin-top:1rem;font-size:0.72rem;color:#7a8799;">Released under the MIT License. Thanks for playing.</p>
@@ -75,27 +75,22 @@
     <label class="checkbox-label"><input type="checkbox" id="menu-coach-btn" class="coach-menu-checkbox" title="Enable coaching feedback" aria-label="Coach toggle"> Coach</label>
   </div>
   <div class="env-grid">
-    <div class="env-card" data-env="dungeon">
+    <div class="env-card" data-env="dungeon" role="button" tabindex="0">
       <div class="icon">🏰</div>
       <div class="name">DUNGEON</div>
       <div class="desc">Stone pillars, narrow corridors, low ceiling</div>
     </div>
-    <div class="env-card" data-env="forest">
+    <div class="env-card" data-env="forest" role="button" tabindex="0">
       <div class="icon">🌲</div>
       <div class="name">FOREST</div>
       <div class="desc">Ancient trunks, canopy fog, open clearing</div>
     </div>
-    <div class="env-card" data-env="lab">
+    <div class="env-card" data-env="lab" role="button" tabindex="0">
       <div class="icon">🔬</div>
       <div class="name">LAB</div>
       <div class="desc">Grid floors, glass panels, cyan light strips</div>
     </div>
-    <div class="env-card" data-env="ruins">
-      <div class="icon">🏛️</div>
-      <div class="name">RUINS</div>
-      <div class="desc">Broken columns, scattered walls, warm daylight</div>
-    </div>
-    <div class="env-card" data-env="duomo">
+    <div class="env-card" data-env="duomo" role="button" tabindex="0">
       <div class="icon">⛪</div>
       <div class="name">DUOMO</div>
       <div class="desc">Marble pillar forest, nave rhythm, open vault</div>
@@ -147,6 +142,18 @@
   </div>
   <div id="hud-hint">WASD / ARROWS OR LEFT STICK · MOUSE OR RIGHT STICK · CLICK OR RT/R2 · <strong>M</strong> / 🔊 SOUND · ESC / START PAUSE</div>
   <div id="hud-coach-toast" class="hud-coach-toast hidden" role="status" aria-live="polite"></div>
+</div>
+
+<div id="mobile-controls" class="mobile-controls hidden" aria-hidden="true">
+  <div id="mobile-look-zone" class="mobile-look-zone" aria-hidden="true"></div>
+  <div id="mobile-stick" class="mobile-stick" aria-label="Move joystick" role="application">
+    <div id="mobile-stick-knob" class="mobile-stick-knob"></div>
+  </div>
+  <button type="button" id="mobile-shoot" class="mobile-shoot" aria-label="Shoot">FIRE</button>
+</div>
+
+<div id="mobile-landscape-warning" class="mobile-landscape-warning hidden" role="status" aria-live="polite">
+  ROTATE TO LANDSCAPE
 </div>
 
 <div id="paused" class="screen hidden">

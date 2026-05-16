@@ -33,12 +33,12 @@ describe('normalizeArenaName', () => {
 
   it('trims and lowercases known arenas', () => {
     expect(normalizeArenaName('  FOREST  ')).toBe('forest');
-    expect(normalizeArenaName('Ruins')).toBe('ruins');
     expect(normalizeArenaName('Duomo')).toBe('duomo');
   });
 
-  it('maps unknown names to lab', () => {
+  it('maps unknown or removed names to lab', () => {
     expect(normalizeArenaName('nope')).toBe('lab');
+    expect(normalizeArenaName('Ruins')).toBe('lab');
   });
 });
 
@@ -52,6 +52,7 @@ describe('arenaNameFromSearch', () => {
   it('defaults when env missing or invalid', () => {
     expect(arenaNameFromSearch('')).toBe('lab');
     expect(arenaNameFromSearch('?env=unknown')).toBe('lab');
+    expect(arenaNameFromSearch('?env=ruins')).toBe('lab');
   });
 });
 

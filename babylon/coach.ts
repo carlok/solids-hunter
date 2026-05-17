@@ -529,12 +529,16 @@ export function wireCoachAndSoundUi(canvas: HTMLCanvasElement): void {
     if (!c) continue;
     c.addEventListener('change', (e) => {
       e.stopPropagation();
+      GameAudio.uiClick();
       toggleHitConfirmMode();
     });
   }
   const onSoundToggleChange = (e: Event): void => {
     e.stopPropagation();
+    const wasMuted = GameAudio.isMuted();
+    if (!wasMuted) GameAudio.uiClick();
     GameAudio.toggleMuted();
+    if (wasMuted) GameAudio.uiClick();
     cancelHitSpeech();
     syncSoundToggles();
   };
@@ -544,6 +548,7 @@ export function wireCoachAndSoundUi(canvas: HTMLCanvasElement): void {
   }
   const onAmbientToggleChange = (e: Event): void => {
     e.stopPropagation();
+    GameAudio.uiClick();
     GameAudio.toggleAmbientEnabled();
     syncSoundToggles();
   };

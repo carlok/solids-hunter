@@ -496,6 +496,7 @@ export function onPointerLockAcquired(): void {
 
 export function syncSoundToggles(): void {
   const m = GameAudio.isMuted();
+  const ambient = GameAudio.isAmbientEnabled();
   const hudSoundToggle = el<HTMLButtonElement>('hud-sound-toggle');
   if (hudSoundToggle) {
     hudSoundToggle.setAttribute('aria-pressed', m ? 'true' : 'false');
@@ -506,6 +507,11 @@ export function syncSoundToggles(): void {
     const c = el<HTMLInputElement>(id);
     if (!c) continue;
     c.checked = !m;
+  }
+  for (const id of ['menu-ambient-toggle', 'hunt-ambient-toggle', 'pause-ambient-toggle']) {
+    const c = el<HTMLInputElement>(id);
+    if (!c) continue;
+    c.checked = ambient;
   }
 }
 
@@ -536,6 +542,15 @@ export function wireCoachAndSoundUi(canvas: HTMLCanvasElement): void {
     const c = el<HTMLInputElement>(id);
     if (c) c.addEventListener('change', onSoundToggleChange);
   }
+  const onAmbientToggleChange = (e: Event): void => {
+    e.stopPropagation();
+    GameAudio.toggleAmbientEnabled();
+    syncSoundToggles();
+  };
+  for (const id of ['menu-ambient-toggle', 'hunt-ambient-toggle', 'pause-ambient-toggle']) {
+    const c = el<HTMLInputElement>(id);
+    if (c) c.addEventListener('change', onAmbientToggleChange);
+  }
 
   document.addEventListener(
     'click',
@@ -543,7 +558,7 @@ export function wireCoachAndSoundUi(canvas: HTMLCanvasElement): void {
       if (e.target === canvas && document.pointerLockElement === canvas) return;
       if (
         (e.target as Element | null)?.closest(
-          '#hud-sound-toggle, #menu-sound-toggle, #hunt-sound-toggle, #pause-sound-toggle, #menu-coach-btn, #hunt-coach-btn, #pause-coach-btn',
+          '#hud-sound-toggle, #menu-sound-toggle, #hunt-sound-toggle, #pause-sound-toggle, #menu-ambient-toggle, #hunt-ambient-toggle, #pause-ambient-toggle, #menu-coach-btn, #hunt-coach-btn, #pause-coach-btn',
         )
       )
         return;

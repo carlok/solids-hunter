@@ -106,6 +106,7 @@ requestAnimationFrame(() => {
 
 const camera = new UniversalCamera('cam', new Vector3(0, 1.7, 0), scene);
 camera.attachControl(canvas, true);
+camera.inertia = 0;
 /** Keyboard walking is custom (constant speed). Built-in FreeCamera keyboard uses acceleration — stacks with arrows/WASD. */
 const kbInput = camera.inputs.attached.keyboard;
 if (kbInput) camera.inputs.remove(kbInput);
@@ -116,9 +117,18 @@ camera.minZ = 0.05;
 camera.fov = (68 * Math.PI) / 180;
 const mouseInput = camera.inputs.attached.mouse as { angularSensibility?: number } | undefined;
 if (mouseInput && typeof mouseInput.angularSensibility === 'number') {
-  mouseInput.angularSensibility = 3400;
+  mouseInput.angularSensibility = 2400;
 }
 scene.activeCamera = camera;
+
+let devFpsEl: HTMLDivElement | null = null;
+let devFpsTimer = 0;
+if (import.meta.env.DEV) {
+  devFpsEl = document.createElement('div');
+  devFpsEl.className = 'dev-fps';
+  devFpsEl.textContent = 'FPS --';
+  document.body.appendChild(devFpsEl);
+}
 
 // ── Post-processing pipeline ──────────────────────────────────────────────────
 const renderPipeline = new DefaultRenderingPipeline('main', true, scene, [camera]);
@@ -414,6 +424,7 @@ envBtn.addEventListener('click', () => {
   requestBestEffortFullscreen();
   clearWorld();
   arena = buildArenaScene(scene, selectedEnv);
+  GameAudio.setArena(selectedEnv);
   camera.position.copyFrom(arena.spawnPosition);
   camera.rotation.set(0, 0, 0);
   if (import.meta.env.DEV) {
@@ -747,7 +758,7 @@ engine.runRenderLoop(() => {
     forward.y = 0;
     if (forward.lengthSquared() < 1e-10) forward.set(0, 0, 1);
     else forward.normalize();
-    const right = Vector3.Cross(forward, Vector3.Up()).normalize();
+    const right = Vector3.Cross(Vector3.Up(), forward).normalize();
 
     let mx = 0;
     let mz = 0;
@@ -777,14 +788,14 @@ engine.runRenderLoop(() => {
       if (gamepadInput.moveForward === 0 && Math.abs(smoothedGamepadMoveForward) < 0.012) {
         smoothedGamepadMoveForward = 0;
       }
-      mx += forward.x * smoothedGamepadMoveForward - right.x * smoothedGamepadMoveX;
-      mz += forward.z * smoothedGamepadMoveForward - right.z * smoothedGamepadMoveX;
+      mx += forward.x * smoothedGamepadMoveForward + right.x * smoothedGamepadMoveX;
+      mz += forward.z * smoothedGamepadMoveForward + right.z * smoothedGamepadMoveX;
       analogMove = Math.min(1, Math.hypot(smoothedGamepadMoveForward, smoothedGamepadMoveX));
     }
     const mobileMoveMag = Math.hypot(mobileInput.moveForward, mobileInput.moveX);
     if (mobileControlsActive && mobileMoveMag > 0.01) {
-      mx += forward.x * mobileInput.moveForward - right.x * mobileInput.moveX;
-      mz += forward.z * mobileInput.moveForward - right.z * mobileInput.moveX;
+      mx += forward.x * mobileInput.moveForward + right.x * mobileInput.moveX;
+      mz += forward.z * mobileInput.moveForward + right.z * mobileInput.moveX;
       analogMove = Math.min(1, mobileMoveMag);
     }
     const len = Math.hypot(mx, mz);
@@ -828,6 +839,14 @@ engine.runRenderLoop(() => {
 
   if (gameActive && arena && camera.position.y !== 1.7) {
     camera.position.y = 1.7;
+  }
+
+  if (devFpsEl) {
+    devFpsTimer += dt;
+    if (devFpsTimer >= 0.25) {
+      devFpsTimer = 0;
+      devFpsEl.textContent = `FPS ${Math.round(engine.getFps())}`;
+    }
   }
 
   if (arena) {

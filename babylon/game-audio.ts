@@ -8,14 +8,25 @@ const AC = typeof window !== 'undefined' ? window.AudioContext || (window as typ
 const names = ['ui_click', 'shoot', 'hit_correct', 'hit_wrong', 'round_win', 'footstep'] as const;
 
 type SoundName = (typeof names)[number];
+type AmbientArena = 'lab' | 'dungeon' | 'forest' | 'duomo';
+type AmbientNode = {
+  stop: (when: number) => void;
+};
 
 let ctx: AudioContext | null = null;
 const buffers: Partial<Record<SoundName, AudioBuffer | null>> = {};
 let footCooldown = 0;
+let currentArena: AmbientArena = 'lab';
+let ambientGain: GainNode | null = null;
+let ambientNodes: AmbientNode[] = [];
+let ambientPlaying = false;
+let ambientWanted = false;
+let ambientEnabled = false;
 
 let muted = false;
 try {
   if (typeof localStorage !== 'undefined' && localStorage.getItem('solidsHunterMute') === '1') muted = true;
+  if (typeof localStorage !== 'undefined' && localStorage.getItem('solidsHunterAmbient') === '1') ambientEnabled = true;
 } catch {
   /* ignore */
 }
@@ -26,6 +37,23 @@ function persistMuted(value: boolean): void {
     localStorage.setItem('solidsHunterMute', muted ? '1' : '0');
   } catch {
     /* ignore */
+  }
+  if (!muted && ambientEnabled && ambientWanted && !ambientPlaying) startAmbient();
+  updateAmbientMute();
+}
+
+function persistAmbientEnabled(value: boolean): void {
+  ambientEnabled = !!value;
+  try {
+    localStorage.setItem('solidsHunterAmbient', ambientEnabled ? '1' : '0');
+  } catch {
+    /* ignore */
+  }
+  if (ambientEnabled) {
+    if (ambientWanted && !ambientPlaying) startAmbient();
+    updateAmbientMute();
+  } else {
+    stopAmbient(false);
   }
 }
 
@@ -38,6 +66,13 @@ function getCtx(): AudioContext | null {
 function resume(): void {
   const c = getCtx();
   if (c && c.state === 'suspended') void c.resume().catch(() => {});
+}
+
+function updateAmbientMute(): void {
+  const c = ctx;
+  if (!c || !ambientGain) return;
+  ambientGain.gain.cancelScheduledValues(c.currentTime);
+  ambientGain.gain.setTargetAtTime(muted || !ambientEnabled ? 0 : 0.11, c.currentTime, 0.3);
 }
 
 function playBuffer(name: SoundName, vol: number, rate?: number, maxDuration?: number): void {
@@ -134,6 +169,133 @@ function fallback(name: SoundName, vol?: number): void {
   }
 }
 
+function createLoopingNoise(c: AudioContext): AudioBufferSourceNode {
+  const seconds = 2;
+  const n = Math.floor(c.sampleRate * seconds);
+  const buf = c.createBuffer(1, n, c.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) {
+    d[i] = Math.random() * 2 - 1;
+  }
+  const src = c.createBufferSource();
+  src.buffer = buf;
+  src.loop = true;
+  return src;
+}
+
+function connectDroneOsc(
+  c: AudioContext,
+  dest: AudioNode,
+  freq: number,
+  type: OscillatorType,
+  gain: number,
+  detune = 0,
+): AmbientNode {
+  const osc = c.createOscillator();
+  const g = c.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  osc.detune.value = detune;
+  g.gain.value = gain;
+  osc.connect(g);
+  g.connect(dest);
+  osc.start();
+  return { stop: (when) => osc.stop(when) };
+}
+
+function startAmbient(): void {
+  ambientWanted = true;
+  if (ambientPlaying || muted || !ambientEnabled) return;
+  const c = getCtx();
+  if (!c) return;
+  resume();
+  ambientPlaying = true;
+  ambientNodes = [];
+  ambientGain = c.createGain();
+  ambientGain.gain.setValueAtTime(0.0001, c.currentTime);
+  ambientGain.gain.exponentialRampToValueAtTime(0.11, c.currentTime + 1.6);
+  ambientGain.connect(c.destination);
+
+  const filter = c.createBiquadFilter();
+  filter.connect(ambientGain);
+
+  switch (currentArena) {
+    case 'dungeon': {
+      filter.type = 'lowpass';
+      filter.frequency.value = 420;
+      ambientNodes.push(connectDroneOsc(c, filter, 41.2, 'sawtooth', 0.055, -6));
+      ambientNodes.push(connectDroneOsc(c, filter, 55, 'triangle', 0.045, 4));
+      ambientNodes.push(connectDroneOsc(c, filter, 82.4, 'sine', 0.035));
+      break;
+    }
+    case 'forest': {
+      filter.type = 'bandpass';
+      filter.frequency.value = 980;
+      filter.Q.value = 0.65;
+      const noise = createLoopingNoise(c);
+      const g = c.createGain();
+      g.gain.value = 0.045;
+      noise.connect(g);
+      g.connect(filter);
+      noise.start();
+      ambientNodes.push({ stop: (when) => noise.stop(when) });
+      ambientNodes.push(connectDroneOsc(c, filter, 146.8, 'sine', 0.025, -8));
+      ambientNodes.push(connectDroneOsc(c, filter, 220, 'sine', 0.018, 7));
+      break;
+    }
+    case 'duomo': {
+      filter.type = 'lowpass';
+      filter.frequency.value = 760;
+      ambientNodes.push(connectDroneOsc(c, filter, 65.4, 'sine', 0.052, -4));
+      ambientNodes.push(connectDroneOsc(c, filter, 98, 'triangle', 0.038, 5));
+      ambientNodes.push(connectDroneOsc(c, filter, 130.8, 'sine', 0.03, -9));
+      break;
+    }
+    case 'lab':
+    default: {
+      filter.type = 'lowpass';
+      filter.frequency.value = 620;
+      ambientNodes.push(connectDroneOsc(c, filter, 61.7, 'triangle', 0.04, -3));
+      ambientNodes.push(connectDroneOsc(c, filter, 123.5, 'sine', 0.026, 4));
+      ambientNodes.push(connectDroneOsc(c, filter, 185, 'sine', 0.018, -7));
+      break;
+    }
+  }
+
+  const lfo = c.createOscillator();
+  const lfoGain = c.createGain();
+  lfo.frequency.value = currentArena === 'lab' ? 0.09 : 0.045;
+  lfoGain.gain.value = currentArena === 'forest' ? 140 : 55;
+  lfo.connect(lfoGain);
+  lfoGain.connect(filter.frequency);
+  lfo.start();
+  ambientNodes.push({ stop: (when) => lfo.stop(when) });
+}
+
+function stopAmbient(clearWanted = true): void {
+  if (clearWanted) ambientWanted = false;
+  const c = ctx;
+  if (!c || !ambientPlaying) return;
+  ambientPlaying = false;
+  const stopAt = c.currentTime + 0.85;
+  if (ambientGain) {
+    ambientGain.gain.cancelScheduledValues(c.currentTime);
+    ambientGain.gain.setTargetAtTime(0.0001, c.currentTime, 0.22);
+  }
+  for (const n of ambientNodes) {
+    try {
+      n.stop(stopAt);
+    } catch {
+      /* ignore already stopped nodes */
+    }
+  }
+  ambientNodes = [];
+  window.setTimeout(() => {
+    ambientGain?.disconnect();
+    ambientGain = null;
+  }, 1000);
+}
+
 async function load(): Promise<void> {
   const c = getCtx();
   if (!c) return;
@@ -158,6 +320,9 @@ export const GameAudio = {
   isMuted(): boolean {
     return muted;
   },
+  isAmbientEnabled(): boolean {
+    return ambientEnabled;
+  },
   isSpeechAllowed(): boolean {
     return !muted;
   },
@@ -166,6 +331,12 @@ export const GameAudio = {
   },
   toggleMuted(): void {
     persistMuted(!muted);
+  },
+  setAmbientEnabled(on: boolean): void {
+    persistAmbientEnabled(on);
+  },
+  toggleAmbientEnabled(): void {
+    persistAmbientEnabled(!ambientEnabled);
   },
   uiClick(): void {
     playBuffer('ui_click', 0.35, 1);
@@ -192,8 +363,19 @@ export const GameAudio = {
     footCooldown = 0.32;
     playBuffer('footstep', 0.22, 0.85 + Math.random() * 0.2, 0.09);
   },
-  onEnterPlay(): void {},
-  onLeavePlay(): void {},
+  setArena(arena: string): void {
+    if (arena === 'dungeon' || arena === 'forest' || arena === 'duomo' || arena === 'lab') {
+      currentArena = arena;
+    } else {
+      currentArena = 'lab';
+    }
+  },
+  onEnterPlay(): void {
+    startAmbient();
+  },
+  onLeavePlay(): void {
+    stopAmbient();
+  },
 };
 
 if (typeof window !== 'undefined') {

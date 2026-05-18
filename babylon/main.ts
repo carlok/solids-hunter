@@ -176,6 +176,7 @@ let smoothedGamepadLookX = 0;
 let smoothedGamepadLookY = 0;
 let smoothedGamepadMoveX = 0;
 let smoothedGamepadMoveForward = 0;
+let gamepadEnvIndex = 0;
 const touchLikeDevice =
   navigator.maxTouchPoints > 0 ||
   window.matchMedia?.('(pointer: coarse)').matches === true;
@@ -395,16 +396,48 @@ modalCredits.addEventListener('click', (e) => {
   if (e.target === modalCredits) modalCredits.classList.add('hidden');
 });
 
+const envCards = Array.from(document.querySelectorAll<HTMLElement>('.env-card'));
+
 function selectEnvironmentCard(card: Element): void {
   document.querySelectorAll('.env-card').forEach((c) => c.classList.remove('sel'));
   card.classList.add('sel');
+  const index = envCards.indexOf(card as HTMLElement);
+  if (index >= 0) gamepadEnvIndex = index;
   const env = card.getAttribute('data-env');
   selectedEnv = normalizeArenaName(env);
   envBtn.disabled = false;
   envBtn.textContent = 'ENTER ' + selectedEnv.toUpperCase() + ' \u2192';
 }
 
-document.querySelectorAll('.env-card').forEach((card) => {
+function activateSelectedEnvironment(): void {
+  if (!selectedEnv) {
+    const card = envCards[gamepadEnvIndex] ?? envCards[0];
+    if (!card) return;
+    selectEnvironmentCard(card);
+  }
+  GameAudio.uiClick();
+  envBtn.click();
+}
+
+function moveGamepadEnvironmentSelection(dx: number, dy: number): void {
+  if (!envCards.length) return;
+  const columns = 2;
+  const current = selectedEnv ? gamepadEnvIndex : 0;
+  let next = current;
+  if (dx !== 0) {
+    const rowStart = Math.floor(current / columns) * columns;
+    const rowEnd = Math.min(rowStart + columns - 1, envCards.length - 1);
+    next = Math.min(rowEnd, Math.max(rowStart, current + dx));
+  } else if (dy !== 0) {
+    next = Math.min(envCards.length - 1, Math.max(0, current + dy * columns));
+  }
+  if (next !== current || !selectedEnv) {
+    selectEnvironmentCard(envCards[next]);
+    GameAudio.uiClick();
+  }
+}
+
+envCards.forEach((card) => {
   card.addEventListener('click', () => {
     selectEnvironmentCard(card);
   });
@@ -674,10 +707,7 @@ if (qEnv) {
   const name = normalizeArenaName(qEnv);
   const card = document.querySelector(`.env-card[data-env="${name}"]`);
   if (card) {
-    card.classList.add('sel');
-    selectedEnv = name;
-    envBtn.disabled = false;
-    envBtn.textContent = 'ENTER ' + name.toUpperCase() + ' \u2192';
+    selectEnvironmentCard(card);
   }
 }
 
@@ -697,9 +727,24 @@ engine.runRenderLoop(() => {
   );
   const gamepadMenuPressed = gamepadButtonJustPressed(gamepadInput, previousGamepadInput, 'menu');
   const gamepadShootPressed = gamepadButtonJustPressed(gamepadInput, previousGamepadInput, 'shoot');
+  const gamepadMenuMoveX = gamepadInput.menuX !== 0 && previousGamepadInput.menuX === 0 ? gamepadInput.menuX : 0;
+  const gamepadMenuMoveY = gamepadInput.menuY !== 0 && previousGamepadInput.menuY === 0 ? gamepadInput.menuY : 0;
 
   if (gamepadInput.connected) {
-    if (gamepadPrimaryPressed) {
+    let gamepadMenuHandled = false;
+    if (!envScreen.classList.contains('hidden')) {
+      gamepadMenuHandled = true;
+      if (gamepadMenuMoveX || gamepadMenuMoveY) {
+        moveGamepadEnvironmentSelection(gamepadMenuMoveX, gamepadMenuMoveY);
+      }
+      if (gamepadPrimaryPressed) {
+        activateSelectedEnvironment();
+      }
+    } else if (!huntScreen.classList.contains('hidden') && gamepadMenuPressed) {
+      gamepadMenuHandled = true;
+      goHome();
+    }
+    if (!gamepadMenuHandled && gamepadPrimaryPressed) {
       if (!roundEndEl.classList.contains('hidden')) {
         roundEndEl.classList.add('hidden');
         showHuntScreen();

@@ -86,9 +86,39 @@ describe('readGamepadInput', () => {
     expect(frame.moveForward).toBe(1);
     expect(frame.lookX).toBe(1);
     expect(frame.lookY).toBeCloseTo(-Math.pow(0.5, 2.15), 6);
+    expect(frame.menuX).toBe(1);
+    expect(frame.menuY).toBe(-1);
     expect(frame.primary).toBe(true);
     expect(frame.shoot).toBe(true);
     expect(frame.menu).toBe(true);
+  });
+
+  it('maps d-pad buttons to digital menu directions', () => {
+    const frame = readGamepadInput(
+      pad({
+        buttons: [
+          button(0),
+          button(0),
+          button(0),
+          button(0),
+          button(0),
+          button(0),
+          button(0),
+          button(0),
+          button(0),
+          button(0),
+          button(0),
+          button(0),
+          button(0),
+          button(1),
+          button(1),
+          button(0),
+        ],
+      }),
+    );
+
+    expect(frame.menuX).toBe(-1);
+    expect(frame.menuY).toBe(1);
   });
 });
 

@@ -4,6 +4,8 @@ export type GamepadInputFrame = {
   moveForward: number;
   lookX: number;
   lookY: number;
+  menuX: number;
+  menuY: number;
   shoot: boolean;
   primary: boolean;
   menu: boolean;
@@ -20,6 +22,8 @@ export const EMPTY_GAMEPAD_INPUT: GamepadInputFrame = {
   moveForward: 0,
   lookX: 0,
   lookY: 0,
+  menuX: 0,
+  menuY: 0,
   shoot: false,
   primary: false,
   menu: false,
@@ -50,6 +54,19 @@ function buttonDown(button: GamepadButton | undefined): boolean {
   return !!button && (button.pressed || button.value >= TRIGGER_THRESHOLD);
 }
 
+function digitalAxis(
+  negative: boolean,
+  positive: boolean,
+  analogValue: number,
+  threshold = 0.55,
+): number {
+  if (negative && !positive) return -1;
+  if (positive && !negative) return 1;
+  if (analogValue <= -threshold) return -1;
+  if (analogValue >= threshold) return 1;
+  return 0;
+}
+
 export function gamepadButtonJustPressed(
   current: GamepadInputFrame,
   previous: GamepadInputFrame,
@@ -67,6 +84,8 @@ export function readGamepadInput(gamepad: Gamepad | null | undefined): GamepadIn
     moveForward: -moveAxis(gamepad.axes[1] ?? 0),
     lookX: lookAxis(gamepad.axes[2] ?? 0),
     lookY: lookAxis(gamepad.axes[3] ?? 0),
+    menuX: digitalAxis(buttonDown(gamepad.buttons[14]), buttonDown(gamepad.buttons[15]), gamepad.axes[0] ?? 0),
+    menuY: digitalAxis(buttonDown(gamepad.buttons[12]), buttonDown(gamepad.buttons[13]), gamepad.axes[1] ?? 0),
     shoot: buttonDown(gamepad.buttons[7]) || buttonDown(gamepad.buttons[5]),
     primary: buttonDown(gamepad.buttons[0]),
     menu:

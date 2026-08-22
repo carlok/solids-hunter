@@ -187,6 +187,22 @@ export function buildLabScene(scene: Scene): ArenaBuildResult {
   addDustMotes(scene, meshes);
 
   const spawnPosition = new Vector3(0, 1.7, 0);
+  /**
+   * Four glass panels box in the origin, and the one at z = +10 sits squarely
+   * in the default +Z view — the round opened with the player's nose against
+   * it. The panels only span x or z in [-5, 5], so the diagonals are the open
+   * sightlines out of the enclosure.
+   */
+  const spawnYaw = Math.PI / 4;
 
-  return makeArenaBuildResult(scene, meshes, lights, textures, wallBoxes, envSpawnHalfXZ, spawnPosition);
+  return makeArenaBuildResult(
+    scene,
+    meshes,
+    lights,
+    textures,
+    wallBoxes,
+    envSpawnHalfXZ,
+    spawnPosition,
+    spawnYaw,
+  );
 }

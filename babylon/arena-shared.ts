@@ -47,6 +47,9 @@ export type ArenaBuildResult = {
   wallBoxes: WallAABB[];
   envSpawnHalfXZ: number;
   spawnPosition: Vector3;
+  /** Yaw the player faces on landing, in radians. Arenas whose spawn sits in
+   *  front of geometry set this so the round does not open facing a wall. */
+  spawnYaw: number;
   /** Optional: register hunt entity bodies for shadow cast/receive after spawn. */
   registerEntityShadowMeshes?: (bodies: AbstractMesh[]) => void;
   dispose: () => void;
@@ -1221,6 +1224,7 @@ export function makeArenaBuildResult(
   wallBoxes: WallAABB[],
   envSpawnHalfXZ: number,
   spawnPosition: Vector3,
+  spawnYaw = 0,
 ): ArenaBuildResult {
   const shadowGen = attachArenaShadows(scene, lights, meshes);
   /** Entity bodies are re-registered every round; the previous round's are gone. */
@@ -1229,6 +1233,7 @@ export function makeArenaBuildResult(
     wallBoxes,
     envSpawnHalfXZ,
     spawnPosition,
+    spawnYaw,
     registerEntityShadowMeshes(bodies: AbstractMesh[]) {
       if (!shadowGen) return;
       for (const stale of entityCasters) {

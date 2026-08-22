@@ -562,7 +562,7 @@ envBtn.addEventListener('click', () => {
   arena = buildArenaScene(scene, selectedEnv);
   GameAudio.setArena(selectedEnv);
   camera.position.copyFrom(arena.spawnPosition);
-  camera.rotation.set(0, 0, 0);
+  camera.rotation.set(0, arena.spawnYaw, 0);
   if (import.meta.env.DEV) {
     console.assert(
       !hitsWall(arena.spawnPosition, arena.wallBoxes),

@@ -121,7 +121,7 @@ describe('generateHuntRule', () => {
   });
 
   it('creates every named rule family', () => {
-    expect(RULE_FAMILIES).toHaveLength(7);
+    expect(RULE_FAMILIES).toHaveLength(9);
     for (const family of RULE_FAMILIES) {
       let i = 0;
       const rule = generateHuntRuleForFamily(family, () => (i++ % 7) / 7);

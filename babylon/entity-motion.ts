@@ -12,6 +12,8 @@ import {
 import {
   createSolidEntity,
   disposeSolidEntity,
+  EMISSIVE_FLOOR,
+  EMISSIVE_PULSE,
   OUTLINE_BASE_WIDTH,
   OUTLINE_PULSE_WIDTH,
   type HuntRule,
@@ -230,7 +232,7 @@ export function updateGameEntities(params: {
     // Emissive glow pulse — subtle breathing effect on each solid
     const mat = ent.body.material as PBRMaterial | null;
     if (mat && 'emissiveColor' in mat) {
-      const pulse = 0.08 + Math.abs(Math.sin(t * 1.4 + ent.glowPhase)) * 0.18;
+      const pulse = EMISSIVE_FLOOR + Math.abs(Math.sin(t * 1.4 + ent.glowPhase)) * EMISSIVE_PULSE;
       const base = mat.albedoColor;
       mat.emissiveColor.set(base.r * pulse, base.g * pulse, base.b * pulse);
     }

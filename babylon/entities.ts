@@ -27,11 +27,23 @@ export type SolidEntityRecord = {
 };
 
 /** Paid once per shape now that geometry is shared, so it can afford to be higher. */
-const BAR_TESSELLATION = 12;
-const RING_TESSELLATION = 48;
+const BAR_TESSELLATION = 16;
+const RING_TESSELLATION = 64;
 
-export const OUTLINE_BASE_WIDTH = 0.018;
-export const OUTLINE_PULSE_WIDTH = 0.004;
+export const OUTLINE_BASE_WIDTH = 0.012;
+export const OUTLINE_PULSE_WIDTH = 0.003;
+
+/**
+ * Self-illumination floor and pulse amplitude.
+ *
+ * The old 0.18 base with a 0.08-0.26 pulse washed out the diffuse and specular
+ * response and left the solids reading as flat decals. Pulling the peak down to
+ * 0.18 lets the clear coat carry the form. It does not go lower than this:
+ * the dungeon is lit by torchlight alone, and identifying a solid's colour
+ * across that room is the whole game.
+ */
+export const EMISSIVE_FLOOR = 0.09;
+export const EMISSIVE_PULSE = 0.09;
 
 /**
  * Ray-catch diameter per shape: the bounding sphere of the drawn cage.
@@ -266,8 +278,10 @@ export function createSolidEntity(
   body.setEnabled(true);
   const mat = new PBRMaterial(`ent_body_${entityId}`, scene);
   rgbToColor3(colorHex, mat.albedoColor);
+  /** Kept low so the PBR shading carries the form; the pulse in
+   *  `updateGameEntities` rides on top of this floor. */
   mat.emissiveColor.copyFrom(mat.albedoColor);
-  mat.emissiveColor.scaleInPlace(0.18);
+  mat.emissiveColor.scaleInPlace(EMISSIVE_FLOOR);
   stylePbrSurfaceMaterial(mat, 'huntSolid');
   body.material = mat;
   body.parent = root;

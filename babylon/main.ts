@@ -145,6 +145,14 @@ const renderPipeline = new DefaultRenderingPipeline('main', true, scene, [camera
 renderPipeline.fxaaEnabled = true;
 renderPipeline.fxaa.samples = 4;
 
+/**
+ * MSAA on top of FXAA. The hunt solids are open wireframe cages, so almost
+ * their entire silhouette is thin near-diagonal edges — exactly the case FXAA
+ * handles worst and multisampling handles best. Touch devices stay at 1; the
+ * quality watchdog drops it back there if a desktop cannot hold the frame rate.
+ */
+renderPipeline.samples = touchLikeDevice ? 1 : 4;
+
 // Bloom — makes emissive solids & torches glow
 renderPipeline.bloomEnabled = true;
 renderPipeline.bloomThreshold = 0.62;
@@ -202,6 +210,9 @@ const qualitySteps: readonly (() => void)[] = [
   () => {
     renderPipeline.bloomKernel = 16;
     renderPipeline.bloomScale = 0.35;
+  },
+  () => {
+    renderPipeline.samples = 1;
   },
   () => {
     renderPipeline.bloomEnabled = false;

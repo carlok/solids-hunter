@@ -164,8 +164,18 @@ export function stylePbrSurfaceMaterial(mat: PBRMaterial, role: MaterialSurfaceR
       mat.roughness = 0.9;
       break;
     case 'huntSolid':
-      mat.metallic = 0.06;
-      mat.roughness = 0.42;
+      /**
+       * Lacquered metal rather than flat plastic: enough metallic response to
+       * pick up the IBL along the tube highlights, with a clear coat for the
+       * tight specular that sells a solid object under a moving camera. The
+       * colour still has to survive identification at 25m, so roughness stays
+       * high enough that the albedo is never lost inside a blown highlight.
+       */
+      mat.metallic = 0.32;
+      mat.roughness = 0.26;
+      mat.clearCoat.isEnabled = true;
+      mat.clearCoat.intensity = 0.65;
+      mat.clearCoat.roughness = 0.12;
       break;
     case 'prop':
       mat.metallic = 0.035;

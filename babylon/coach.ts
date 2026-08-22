@@ -546,6 +546,13 @@ export function wireCoachAndSoundUi(canvas: HTMLCanvasElement): void {
     const c = el<HTMLInputElement>(id);
     if (c) c.addEventListener('change', onSoundToggleChange);
   }
+  /**
+   * The in-game HUD speaker is a button, not a checkbox, so it never fired the
+   * `change` above and had no handler of its own — it redrew its own icon from
+   * `syncSoundToggles` but clicking it did nothing.
+   */
+  const hudSoundToggle = el<HTMLButtonElement>('hud-sound-toggle');
+  if (hudSoundToggle) hudSoundToggle.addEventListener('click', onSoundToggleChange);
   const onAmbientToggleChange = (e: Event): void => {
     e.stopPropagation();
     GameAudio.uiClick();

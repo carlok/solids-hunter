@@ -9,6 +9,8 @@ export type GamepadInputFrame = {
   shoot: boolean;
   primary: boolean;
   menu: boolean;
+  /** B / circle. Backs out of a menu; also pauses during play. */
+  back: boolean;
 };
 
 const DEADZONE = 0.18;
@@ -27,6 +29,7 @@ export const EMPTY_GAMEPAD_INPUT: GamepadInputFrame = {
   shoot: false,
   primary: false,
   menu: false,
+  back: false,
 };
 
 export function applyStickDeadzone(value: number, deadzone = DEADZONE): number {
@@ -70,7 +73,7 @@ function digitalAxis(
 export function gamepadButtonJustPressed(
   current: GamepadInputFrame,
   previous: GamepadInputFrame,
-  button: 'shoot' | 'primary' | 'menu',
+  button: 'shoot' | 'primary' | 'menu' | 'back',
 ): boolean {
   return current[button] && !previous[button];
 }
@@ -88,10 +91,13 @@ export function readGamepadInput(gamepad: Gamepad | null | undefined): GamepadIn
     menuY: digitalAxis(buttonDown(gamepad.buttons[12]), buttonDown(gamepad.buttons[13]), gamepad.axes[1] ?? 0),
     shoot: buttonDown(gamepad.buttons[7]) || buttonDown(gamepad.buttons[5]),
     primary: buttonDown(gamepad.buttons[0]),
+    /** Start / Select. B is reported separately as `back` so menus can tell
+     *  "close this" from "pause", but it still counts here for in-game pause. */
     menu:
       buttonDown(gamepad.buttons[9]) ||
       buttonDown(gamepad.buttons[8]) ||
       buttonDown(gamepad.buttons[1]),
+    back: buttonDown(gamepad.buttons[1]),
   };
 }
 

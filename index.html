@@ -42,7 +42,7 @@
       <li><strong>Move:</strong> WASD / arrow keys, gamepad left stick, or mobile left thumb pad</li>
       <li><strong>Look:</strong> mouse (pointer lock after you start), gamepad right stick, or drag the right side of the screen on mobile</li>
       <li><strong>Shoot:</strong> left-click, gamepad RT/R2, or mobile FIRE button</li>
-      <li><strong>Gamepad:</strong> D-pad / left stick selects arenas, A selects / starts / resumes, Start/Menu pauses</li>
+      <li><strong>Gamepad:</strong> D-pad / left stick moves between every control on screen (arena cards, sound / ambient / coach toggles, menu button, dialog buttons), A activates the highlighted one, B backs out of a dialog or menu, Start skips ahead / pauses</li>
       <li><strong>Rule:</strong> shown in full on the hunt screen; during play it stays at the <strong>top center</strong> of the HUD</li>
       <li><strong>Sound:</strong> <strong>M</strong> toggles mute anytime; arena / rule / pause screens also have a <strong>Sound: ON/OFF</strong> button; Ambient sound is optional and starts off. In-game, top-left icon or <strong>M</strong> (mute also silences spoken coach lines)</li>
       <li><strong>Hit coach:</strong> arena / rule / pause — cycle <strong>Coach: OFF / VOICE / MODAL</strong>. Wrong hits: voice-only pauses targets briefly with a subtitle; modal+voice unlocks the cursor until you confirm. Correct hits stay instant; coach adds optional spoken tips. Speech picks the best available <strong>English</strong> voice from your browser (see <a href="https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesisUtterance/voice" target="_blank" rel="noopener">MDN</a>) and reads a <strong>short</strong> line aloud (like <a href="https://github.com/carlok/agility-trainer" target="_blank" rel="noopener">Agility Trainer</a>); the modal still shows the full text. Set <code>localStorage.solidsHunterHitConfirmN</code> to limit coaching to the first N hits per round (0 = unlimited).</li>
@@ -88,7 +88,7 @@
     <label class="checkbox-label"><input type="checkbox" id="menu-ambient-toggle" class="ambient-menu-checkbox" aria-label="Ambient music toggle"> Ambient</label>
     <label class="checkbox-label"><input type="checkbox" id="menu-coach-btn" class="coach-menu-checkbox" title="Enable coaching feedback" aria-label="Coach toggle"> Coach</label>
   </div>
-  <p class="menu-gamepad-hint">GAMEPAD: D-PAD / LEFT STICK SELECT · A ENTER</p>
+  <p class="menu-gamepad-hint">GAMEPAD: D-PAD / LEFT STICK MOVE · A SELECT · B BACK · START PAUSE</p>
   <div class="env-grid">
     <div class="env-card" data-env="dungeon" role="button" tabindex="0">
       <div class="icon">🏰</div>

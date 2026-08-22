@@ -41,9 +41,10 @@ import {
   readGamepadInput,
   type GamepadInputFrame,
 } from './gamepad-input';
+import { createGamepadMenu } from './gamepad-menu';
 import { attachBabylonShooting } from './shoot-input';
 import { createRoundDirector, recordRound, tuningForRound } from './round-director';
-import { hitsEntity, hitsWall } from './wall-collision';
+import { bestSpawnYaw, hitsEntity, hitsWall } from './wall-collision';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement | null;
 if (!canvas) {
@@ -272,7 +273,6 @@ let smoothedGamepadLookX = 0;
 let smoothedGamepadLookY = 0;
 let smoothedGamepadMoveX = 0;
 let smoothedGamepadMoveForward = 0;
-let gamepadEnvIndex = 0;
 let roundDirector = createRoundDirector();
 const mobileInput = {
   moveX: 0,
@@ -515,40 +515,10 @@ const envCards = Array.from(document.querySelectorAll<HTMLElement>('.env-card'))
 function selectEnvironmentCard(card: Element): void {
   document.querySelectorAll('.env-card').forEach((c) => c.classList.remove('sel'));
   card.classList.add('sel');
-  const index = envCards.indexOf(card as HTMLElement);
-  if (index >= 0) gamepadEnvIndex = index;
   const env = card.getAttribute('data-env');
   selectedEnv = normalizeArenaName(env);
   envBtn.disabled = false;
   envBtn.textContent = 'ENTER ' + selectedEnv.toUpperCase() + ' \u2192';
-}
-
-function activateSelectedEnvironment(): void {
-  if (!selectedEnv) {
-    const card = envCards[gamepadEnvIndex] ?? envCards[0];
-    if (!card) return;
-    selectEnvironmentCard(card);
-  }
-  GameAudio.uiClick();
-  envBtn.click();
-}
-
-function moveGamepadEnvironmentSelection(dx: number, dy: number): void {
-  if (!envCards.length) return;
-  const columns = 2;
-  const current = selectedEnv ? gamepadEnvIndex : 0;
-  let next = current;
-  if (dx !== 0) {
-    const rowStart = Math.floor(current / columns) * columns;
-    const rowEnd = Math.min(rowStart + columns - 1, envCards.length - 1);
-    next = Math.min(rowEnd, Math.max(rowStart, current + dx));
-  } else if (dy !== 0) {
-    next = Math.min(envCards.length - 1, Math.max(0, current + dy * columns));
-  }
-  if (next !== current || !selectedEnv) {
-    selectEnvironmentCard(envCards[next]);
-    GameAudio.uiClick();
-  }
 }
 
 envCards.forEach((card) => {
@@ -573,7 +543,8 @@ envBtn.addEventListener('click', () => {
   arena = buildArenaScene(scene, selectedEnv);
   GameAudio.setArena(selectedEnv);
   camera.position.copyFrom(arena.spawnPosition);
-  camera.rotation.set(0, arena.spawnYaw, 0);
+  /** The arena's intended heading, overridden only when it faces geometry. */
+  camera.rotation.set(0, bestSpawnYaw(arena.spawnPosition, arena.wallBoxes, arena.spawnYaw), 0);
   if (import.meta.env.DEV) {
     console.assert(
       !hitsWall(arena.spawnPosition, arena.wallBoxes),
@@ -685,6 +656,35 @@ function pauseGamepadPlay(): void {
   syncSoundToggles();
   syncMobileUi();
 }
+
+/**
+ * Menu layers a gamepad can drive, highest priority first. Order matters: a
+ * dialog on top of the pause screen has to own the pad, not the screen behind
+ * it. `also` pulls the floating nav button into whichever screen is showing so
+ * HELP and CREDITS are reachable without a mouse.
+ */
+const gamepadMenu = createGamepadMenu([
+  {
+    root: req<HTMLDivElement>('modal-hit-feedback'),
+  },
+  {
+    root: modalHelp,
+    onBack: () => modalHelp.classList.add('hidden'),
+  },
+  {
+    root: modalCredits,
+    onBack: () => modalCredits.classList.add('hidden'),
+  },
+  {
+    root: navDropdown,
+    also: [topNav],
+    onBack: closeNavMenu,
+  },
+  { root: roundEndEl },
+  { root: pausedEl, onBack: () => enterPlayMode() },
+  { root: huntScreen, also: [topNav], onBack: goHome },
+  { root: envScreen, also: [topNav] },
+]);
 
 req<HTMLButtonElement>('start-btn').addEventListener('click', () => {
   tryLockPointer();
@@ -844,37 +844,39 @@ engine.runRenderLoop(() => {
   );
   const gamepadMenuPressed = gamepadButtonJustPressed(gamepadInput, previousGamepadInput, 'menu');
   const gamepadShootPressed = gamepadButtonJustPressed(gamepadInput, previousGamepadInput, 'shoot');
+  const gamepadBackPressed = gamepadButtonJustPressed(gamepadInput, previousGamepadInput, 'back');
+  const gamepadStartPressed = gamepadMenuPressed && !gamepadBackPressed;
   const gamepadMenuMoveX = gamepadInput.menuX !== 0 && previousGamepadInput.menuX === 0 ? gamepadInput.menuX : 0;
   const gamepadMenuMoveY = gamepadInput.menuY !== 0 && previousGamepadInput.menuY === 0 ? gamepadInput.menuY : 0;
 
   if (gamepadInput.connected) {
-    let gamepadMenuHandled = false;
-    if (!envScreen.classList.contains('hidden')) {
-      gamepadMenuHandled = true;
+    const menuOpen = gamepadMenu.isMenuOpen();
+    if (menuOpen) {
       if (gamepadMenuMoveX || gamepadMenuMoveY) {
-        moveGamepadEnvironmentSelection(gamepadMenuMoveX, gamepadMenuMoveY);
+        gamepadMenu.move(gamepadMenuMoveX, gamepadMenuMoveY);
+        GameAudio.uiClick();
       }
       if (gamepadPrimaryPressed) {
-        activateSelectedEnvironment();
+        gamepadMenu.activate();
+        GameAudio.uiClick();
       }
-    } else if (!huntScreen.classList.contains('hidden') && gamepadMenuPressed) {
-      gamepadMenuHandled = true;
-      goHome();
-    }
-    if (!gamepadMenuHandled && gamepadPrimaryPressed) {
-      if (!roundEndEl.classList.contains('hidden')) {
-        roundEndEl.classList.add('hidden');
-        showHuntScreen();
-      } else if (!huntScreen.classList.contains('hidden') || !pausedEl.classList.contains('hidden')) {
-        enterPlayMode();
+      if (gamepadBackPressed && gamepadMenu.back()) {
+        GameAudio.uiClick();
+      } else if (gamepadStartPressed) {
+        /** Start skips ahead: straight into the round from the rule screen, or
+         *  into the chosen arena from the picker. */
+        if (!huntScreen.classList.contains('hidden')) enterPlayMode();
+        else if (!envScreen.classList.contains('hidden') && !envBtn.disabled) envBtn.click();
       }
-    }
-    if (gamepadMenuPressed && gameActive) {
-      if (document.pointerLockElement === canvas) document.exitPointerLock();
-      else pauseGamepadPlay();
-    }
-    if (gamepadShootPressed && gameActive) {
-      shooter.shoot();
+    } else {
+      gamepadMenu.reset();
+      if (gamepadMenuPressed && gameActive) {
+        if (document.pointerLockElement === canvas) document.exitPointerLock();
+        else pauseGamepadPlay();
+      }
+      if (gamepadShootPressed && gameActive) {
+        shooter.shoot();
+      }
     }
   }
 

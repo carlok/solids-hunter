@@ -205,17 +205,23 @@ function addDuomoTexturedFloor(scene: Scene, meshes: Mesh[]): void {
     { width: 160, height: 160, subdivisions: 2 },
     scene,
   );
-  const texture = new Texture(`${import.meta.env.BASE_URL}assets/duomo/floor.jpg`, scene);
+  const texture = new Texture(
+    `${import.meta.env.BASE_URL}assets/duomo/mosaico_marmoreo_rinascimentale_ornamentale.jpg`,
+    scene,
+  );
   texture.wrapU = Texture.WRAP_ADDRESSMODE;
   texture.wrapV = Texture.WRAP_ADDRESSMODE;
   texture.uScale = 10;
-  texture.vScale = 10;
+  texture.vScale = 15;
+  /** A floor this large is read almost entirely at grazing angles, where
+   *  anisotropic filtering buys far more than raw texture resolution does. */
+  texture.anisotropicFilteringLevel = 8;
 
   const mat = new PBRMaterial(`duomoFloorMat_${meshes.length}`, scene);
   mat.albedoTexture = texture;
   mat.metallic = 0;
-  mat.roughness = 0.68;
-  mat.environmentIntensity = 0.58;
+  mat.roughness = 0.58;
+  mat.environmentIntensity = 0.48;
   floor.material = mat;
   floor.receiveShadows = true;
   meshes.push(floor);
@@ -312,8 +318,21 @@ export function buildDuomoScene(scene: Scene): ArenaBuildResult {
   scene.fogStart = 180;
   scene.fogEnd = 360;
   scene.fogColor.set(0.24, 0.72, 1);
-  addAmbientFill(scene, lights, 0xd8f2ff, 0.58);
-  addDirFromPosition(scene, lights, 0xffffff, 1.08, -9, 34, -12);
+  /**
+   * The sun goes in FIRST, before the fill and the point lights.
+   *
+   * Materials only compile the first `maxSimultaneousLights` (4) entries of
+   * `scene.lights`. This arena used to call `addSunLight` last, after a dozen
+   * dim point lights, so its `arenaSun` fell outside that budget and
+   * contributed neither light nor shadow — the whole nave was lit by ambient
+   * and IBL alone, and the shadow map was never sampled.
+   *
+   * The white 1.0 key directional that used to sit here was compensating for
+   * exactly that dead sun, so it is gone: two overlapping key directionals
+   * would now double the exposure.
+   */
+  addSunLight(scene, lights);
+  addAmbientFill(scene, lights, 0xd8f2ff, 0.62);
   addDirFromPosition(scene, lights, 0xb9e8ff, 0.28, 12, 18, 16);
   addPoint(scene, lights, 0xffdfbd, 0.34, 0, 5.6, bayZ(2.2), 42);
   addPoint(scene, lights, 0xc8edff, 0.38, 0, 9.2, bayZ(9.2), 52);
@@ -324,7 +343,6 @@ export function buildDuomoScene(scene: Scene): ArenaBuildResult {
   addEngagedWallPiers(scene, meshes, wallBoxes);
 
   addDuomoAzureSky(scene, meshes);
-  addSunLight(scene, lights);
 
   const spawnPosition = new Vector3(0, 1.7, bayZ(0.9));
   return makeArenaBuildResult(scene, meshes, lights, [], wallBoxes, envSpawnHalfXZ, spawnPosition);

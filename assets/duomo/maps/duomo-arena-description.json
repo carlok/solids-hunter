@@ -22,7 +22,7 @@
   "materials": {
     "dominant": "warm pale Candoglia-like marble",
     "secondary": "aged dark stone in wall bases and pier shadows",
-    "floor": "texture image at assets/duomo/floor.jpg",
+    "floor": "AI-generated decorative mosaic texture at assets/duomo/mosaico_marmoreo_rinascimentale_ornamentale.png; it is a stylistic approximation, not a historical Duomo floor reproduction.",
     "lighting": "cool daylight from above with warm bounce and azure sky"
   },
   "gameplay": {

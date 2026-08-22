@@ -165,7 +165,7 @@ export function stylePbrSurfaceMaterial(mat: PBRMaterial, role: MaterialSurfaceR
       break;
     case 'huntSolid':
       mat.metallic = 0.06;
-      mat.roughness = 0.49;
+      mat.roughness = 0.42;
       break;
     case 'prop':
       mat.metallic = 0.035;

@@ -3,17 +3,17 @@ import { PBRMaterial, Vector3 } from '@babylonjs/core';
 
 import { xzOverlapSeparation } from '@lib/entity-collision-2d.js';
 import {
-  CNAMES,
+  buildSpawnList,
   COLORS,
-  ensureMinimumMatches,
   MOVE_MODES,
   pick,
-  SHAPES,
 } from '@lib/game-rules.js';
 
 import {
   createSolidEntity,
   disposeSolidEntity,
+  OUTLINE_BASE_WIDTH,
+  OUTLINE_PULSE_WIDTH,
   type HuntRule,
   type SolidEntityRecord,
   type SolidShape,
@@ -25,7 +25,8 @@ import {
   type WallAABB,
 } from './wall-collision';
 
-const ENTITY_PAIR_SEP = 1.38;
+/** Minimum XZ distance the separation passes hold between two live solids. */
+export const ENTITY_PAIR_SEP = 1.38;
 
 export type MoveMode = (typeof MOVE_MODES)[number];
 
@@ -59,6 +60,12 @@ export type SpawnGameOptions = {
   rule: HuntRule;
   /** @default `14 + floor(rng * 5)` like js/main.js */
   count?: number;
+  /** Optional round-director motion subset; absent preserves the full default mix. */
+  moveModes?: readonly MoveMode[];
+  /** Optional round-director scalar; absent preserves existing speeds. */
+  speedMultiplier?: number;
+  /** Optional round-director decoy skew; absent preserves the uniform draw. */
+  nearMissBias?: number;
   rng?: () => number;
 };
 
@@ -90,12 +97,13 @@ export function spawnGameEntities(scene: Scene, opts: SpawnGameOptions): GameEnt
   const rng = opts.rng ?? Math.random;
   const count = opts.count ?? 14 + Math.floor(rng() * 5);
   const { wallBoxes, envSpawnHalfXZ, rule } = opts;
+  const moveModes = opts.moveModes?.length ? opts.moveModes : MOVE_MODES;
+  const speedMultiplier = opts.speedMultiplier ?? 1;
 
-  const list: { shape: SolidShape; color: string }[] = Array.from({ length: count }, () => ({
-    shape: SHAPES[Math.floor(rng() * SHAPES.length)]!,
-    color: CNAMES[Math.floor(rng() * CNAMES.length)]!,
-  }));
-  ensureMinimumMatches(list, rule, 3, rng);
+  const list = buildSpawnList(count, rule, opts.nearMissBias, rng) as {
+    shape: SolidShape;
+    color: string;
+  }[];
 
   const out: GameEntity[] = [];
   for (const { shape, color } of list) {
@@ -111,7 +119,7 @@ export function spawnGameEntities(scene: Scene, opts: SpawnGameOptions): GameEnt
     });
     const tp = randomOpenXZ(envSpawnHalfXZ, 3, 1.45, wallBoxes);
     const target = new Vector3(tp.x, 1.5, tp.z);
-    const moveMode = pick(MOVE_MODES, rng) as MoveMode;
+    const moveMode = pick(moveModes, rng) as MoveMode;
 
     const baseMotion: Omit<GameEntity, keyof SolidEntityRecord> = {
       moveMode,
@@ -142,7 +150,7 @@ export function spawnGameEntities(scene: Scene, opts: SpawnGameOptions): GameEnt
         ...rec,
         ...baseMotion,
         bobFreq: 1.1 + rng() * 0.9,
-        speed: 1.4 + rng() * 1.3,
+        speed: (1.4 + rng() * 1.3) * speedMultiplier,
         targetTimer: 3 + rng() * 4,
         bobAmp: 0.2,
       });
@@ -151,7 +159,7 @@ export function spawnGameEntities(scene: Scene, opts: SpawnGameOptions): GameEnt
         ...rec,
         ...baseMotion,
         bobFreq: 2.0 + rng() * 1.2,
-        speed: 0.85 + rng() * 0.95,
+        speed: (0.85 + rng() * 0.95) * speedMultiplier,
         targetTimer: 2.5 + rng() * 3.5,
         bobAmp: 0.38 + rng() * 0.18,
       });
@@ -163,11 +171,11 @@ export function spawnGameEntities(scene: Scene, opts: SpawnGameOptions): GameEnt
         orbitCz: pos.z,
         orbitAng: rng() * Math.PI * 2,
         orbitR: 2.2 + rng() * 4.2,
-        orbitSpeed: 0.38 + rng() * 0.55,
+        orbitSpeed: (0.38 + rng() * 0.55) * speedMultiplier,
       });
     } else {
       const ang = rng() * Math.PI * 2;
-      const sp = 1.85 + rng() * 2.35;
+      const sp = (1.85 + rng() * 2.35) * speedMultiplier;
       out.push({
         ...rec,
         ...baseMotion,
@@ -223,10 +231,12 @@ export function updateGameEntities(params: {
     const mat = ent.body.material as PBRMaterial | null;
     if (mat && 'emissiveColor' in mat) {
       const pulse = 0.08 + Math.abs(Math.sin(t * 1.4 + ent.glowPhase)) * 0.18;
-      mat.emissiveColor.scaleToRef(1, mat.emissiveColor); // keep colour
       const base = mat.albedoColor;
       mat.emissiveColor.set(base.r * pulse, base.g * pulse, base.b * pulse);
     }
+    /** Was a per-entity onBeforeRender observer; same effect, one loop. */
+    ent.body.outlineWidth =
+      OUTLINE_BASE_WIDTH + (Math.sin(t * 2.1 + ent.glowPhase) + 1) * OUTLINE_PULSE_WIDTH;
 
     if (ent.moveMode === 'orbit') {
       ent.orbitAng += dt * ent.orbitSpeed;

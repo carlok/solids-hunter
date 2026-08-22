@@ -46,10 +46,10 @@ export function buildLabScene(scene: Scene): ArenaBuildResult {
   const wallBoxes: WallAABB[] = [];
   const envSpawnHalfXZ = LAB_ENV_SPAWN_HALF_XZ;
 
-  setAzureBackgroundLinearFog(scene, 36, 118);
+  setAzureBackgroundLinearFog(scene, 44, 126);
 
-  addAmbientFill(scene, lights, 0xd2e8fc, 0.3); // Softer ambient
-  addPoint(scene, lights, 0x55eeff, 1.0, 0, 6, 0, 60); // Central chandelier
+  addAmbientFill(scene, lights, 0xd8edff, 0.36); // Cleaner fill for target contrast
+  addPoint(scene, lights, 0x55eeff, 0.9, 0, 6, 0, 60); // Central chandelier
 
   // Spot lights
   const addSpot = (x: number, z: number) => {

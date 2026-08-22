@@ -42,12 +42,17 @@ import {
   type GamepadInputFrame,
 } from './gamepad-input';
 import { attachBabylonShooting } from './shoot-input';
+import { createRoundDirector, recordRound, tuningForRound } from './round-director';
 import { hitsEntity, hitsWall } from './wall-collision';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement | null;
 if (!canvas) {
   throw new Error('Missing #game canvas');
 }
+
+const touchLikeDevice =
+  navigator.maxTouchPoints > 0 ||
+  window.matchMedia?.('(pointer: coarse)').matches === true;
 
 function req<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
@@ -81,14 +86,15 @@ const engine = new Engine(canvas, true, {
   preserveDrawingBuffer: true,
   adaptToDeviceRatio: true,
 });
+if (touchLikeDevice && window.devicePixelRatio > 2) engine.setHardwareScalingLevel(1.25);
 const scene = new Scene(engine);
 
 {
   const ipc = scene.imageProcessingConfiguration;
   ipc.toneMappingEnabled = true;
   ipc.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
-  ipc.exposure = 1.12;
-  ipc.contrast = 1.06;
+  ipc.exposure = 1.06;
+  ipc.contrast = 1.04;
 }
 
 const iblPath = `${import.meta.env.BASE_URL}assets/textures/environmentSpecular.env`;
@@ -124,6 +130,8 @@ scene.activeCamera = camera;
 let devFpsEl: HTMLDivElement | null = null;
 let devFpsTimer = 0;
 if (import.meta.env.DEV) {
+  /** Dev-only handle for poking at the live scene from the console. */
+  (window as unknown as { solidsHunterDev?: unknown }).solidsHunterDev = { scene, camera, engine };
   devFpsEl = document.createElement('div');
   devFpsEl.className = 'dev-fps';
   devFpsEl.textContent = 'FPS --';
@@ -139,15 +147,13 @@ renderPipeline.fxaa.samples = 4;
 
 // Bloom — makes emissive solids & torches glow
 renderPipeline.bloomEnabled = true;
-renderPipeline.bloomThreshold = 0.55;
-renderPipeline.bloomWeight = 0.42;
-renderPipeline.bloomKernel = 64;
+renderPipeline.bloomThreshold = 0.62;
+renderPipeline.bloomWeight = 0.3;
+renderPipeline.bloomKernel = touchLikeDevice ? 32 : 48;
 renderPipeline.bloomScale = 0.5;
 
-// Chromatic aberration — subtle lens realism
-renderPipeline.chromaticAberrationEnabled = true;
-renderPipeline.chromaticAberration.aberrationAmount = 0.8;
-renderPipeline.chromaticAberration.radialIntensity = 1.0;
+// Keep colour-identification targets crisp at the screen edge.
+renderPipeline.chromaticAberrationEnabled = false;
 
 // Grain — disabled
 renderPipeline.grainEnabled = false;
@@ -157,29 +163,106 @@ renderPipeline.depthOfFieldEnabled = false; // keep off by default, toggle if wa
 
 // SSAO2 — contact shadows / ambient occlusion
 const ssao = new SSAO2RenderingPipeline('ssao', scene, { ssaoRatio: 0.5, blurRatio: 0.5 }, [camera]);
-ssao.radius = 1.8;
-ssao.totalStrength = 0.65;
-ssao.base = 0.12;
+ssao.radius = touchLikeDevice ? 1.15 : 1.45;
+ssao.totalStrength = touchLikeDevice ? 0.3 : 0.48;
+ssao.base = 0.16;
 ssao.maxZ = 80;
 ssao.minZAspect = 0.2;
+
+/**
+ * Downgrade-only quality watchdog.
+ *
+ * Higher mesh tessellation and shadows in every arena raise the floor this
+ * build needs. Rather than guessing from `touchLikeDevice`, measure: if the
+ * frame rate stays under target across a whole sampling window, shed the most
+ * expensive effect and re-measure. Never upgrades, so it settles instead of
+ * oscillating between two states.
+ */
+const QUALITY_TARGET_FPS = 45;
+const QUALITY_SAMPLE_SECONDS = 2;
+/** Skipped after a downgrade so the next window measures the new settings. */
+const QUALITY_SETTLE_SECONDS = 3;
+/**
+ * Shader compilation makes the opening seconds of a round slow on every
+ * machine, fast ones included. Measuring through that would strip effects from
+ * hardware that never needed it, so the first window is only opened once the
+ * round has actually settled.
+ */
+const QUALITY_WARMUP_SECONDS = 5;
+
+const qualitySteps: readonly (() => void)[] = [
+  () => {
+    /**
+     * Detach, do not dispose. Disposing a render pipeline that is still
+     * attached to the active camera tears down the post-process chain
+     * mid-frame and the scene renders black from then on.
+     */
+    scene.postProcessRenderPipelineManager.detachCamerasFromRenderPipeline(ssao.name, [camera]);
+  },
+  () => {
+    renderPipeline.bloomKernel = 16;
+    renderPipeline.bloomScale = 0.35;
+  },
+  () => {
+    renderPipeline.bloomEnabled = false;
+  },
+  () => {
+    engine.setHardwareScalingLevel(Math.max(engine.getHardwareScalingLevel(), 1.5));
+  },
+];
+let qualityStep = 0;
+let qualityWindow = 0;
+let qualityFrames = 0;
+let qualitySettle = QUALITY_WARMUP_SECONDS;
+
+function updateQualityWatchdog(dt: number): void {
+  if (qualityStep >= qualitySteps.length) return;
+  /**
+   * A hidden tab throttles rAF to roughly 1Hz. Measuring through that would
+   * strip every effect from a machine that is perfectly capable of running them.
+   */
+  if (document.hidden || !gameActive) {
+    qualityWindow = 0;
+    qualityFrames = 0;
+    qualitySettle = QUALITY_WARMUP_SECONDS;
+    return;
+  }
+  if (qualitySettle > 0) {
+    qualitySettle -= dt;
+    return;
+  }
+  qualityWindow += dt;
+  qualityFrames++;
+  if (qualityWindow < QUALITY_SAMPLE_SECONDS) return;
+
+  const averageFps = qualityFrames / qualityWindow;
+  qualityWindow = 0;
+  qualityFrames = 0;
+  if (averageFps >= QUALITY_TARGET_FPS) return;
+
+  qualitySteps[qualityStep]!();
+  qualityStep++;
+  qualitySettle = QUALITY_SETTLE_SECONDS;
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 let arena: ArenaBuildResult | null = null;
 let entities: ReturnType<typeof spawnGameEntities> = [];
+/** Reused scratch list so the render loop does not allocate an array per frame. */
+const liveEntities: ReturnType<typeof spawnGameEntities> = [];
 let currentRule: HuntRule | null = null;
 let selectedEnv: ArenaName | null = null;
 let gameActive = false;
 const keys: Record<string, boolean> = {};
 let elapsedTime = 0;
+let activeRoundSeconds = 0;
 let previousGamepadInput: GamepadInputFrame = EMPTY_GAMEPAD_INPUT;
 let smoothedGamepadLookX = 0;
 let smoothedGamepadLookY = 0;
 let smoothedGamepadMoveX = 0;
 let smoothedGamepadMoveForward = 0;
 let gamepadEnvIndex = 0;
-const touchLikeDevice =
-  navigator.maxTouchPoints > 0 ||
-  window.matchMedia?.('(pointer: coarse)').matches === true;
+let roundDirector = createRoundDirector();
 const mobileInput = {
   moveX: 0,
   moveForward: 0,
@@ -196,7 +279,12 @@ const shootRuntime = {
   matchLeft: 0,
   roundEnded: false,
   shotsThisRound: 0,
+  correctHits: 0,
+  wrongHits: 0,
 };
+
+const releaseVersion = document.querySelector<HTMLMetaElement>('meta[name="application-version"]')?.content ?? 'dev';
+req<HTMLElement>('release-version').textContent = releaseVersion;
 
 function syncHudRuleStrip(): void {
   if (!currentRule) return;
@@ -300,15 +388,23 @@ function showHuntScreen(): void {
   shootRuntime.shotsThisRound = 0;
   shootRuntime.score = 0;
   shootRuntime.roundEnded = false;
-  currentRule = generateHuntRule();
+  shootRuntime.correctHits = 0;
+  shootRuntime.wrongHits = 0;
+  const tuning = tuningForRound(roundDirector);
+  currentRule = generateHuntRule(Math.random, tuning.allowedRuleFamilies);
 
   disposeAllGameEntities(entities);
   elapsedTime = 0;
+  activeRoundSeconds = 0;
 
   entities = spawnGameEntities(scene, {
     wallBoxes: arena.wallBoxes,
     envSpawnHalfXZ: arena.envSpawnHalfXZ,
     rule: currentRule,
+    count: tuning.count,
+    moveModes: tuning.moveModes,
+    speedMultiplier: tuning.speedMultiplier,
+    nearMissBias: tuning.nearMissBias,
   });
   arena.registerEntityShadowMeshes?.(entities.map((e) => e.body));
   shootRuntime.matchLeft = entities.filter((e) => e.isMatch).length;
@@ -335,7 +431,13 @@ const shooter = attachBabylonShooting({
   shootContext: {
     getEntities: () => entities,
     getMatchLeft: () => shootRuntime.matchLeft,
-    onRoundComplete: () => {
+    onRoundComplete: (outcome) => {
+      roundDirector = recordRound(roundDirector, {
+        outcome,
+        correctHits: shootRuntime.correctHits,
+        wrongHits: shootRuntime.wrongHits,
+        elapsedSeconds: activeRoundSeconds,
+      });
       gameActive = false;
       resetMobileInput();
       syncTopNav();
@@ -347,6 +449,7 @@ const shooter = attachBabylonShooting({
     scoreEl: req('score-el'),
     targetsEl: req('targets-el'),
     flashEl: req('flash'),
+    reticleEl: req('hud-reticle'),
     roundEndEl,
     roundEndLabelEl: req('round-end-label'),
     roundEndTitleEl: req('round-end-title'),
@@ -718,6 +821,9 @@ void GameAudio.load().catch(() => { });
 engine.runRenderLoop(() => {
   const dt = Math.min(engine.getDeltaTime() / 1000, 0.05);
   elapsedTime += dt;
+  /** Coach modals freeze play; charging that time against the director's 60s
+   *  "strong round" test would punish players for using the coach. */
+  if (gameActive && !gameFeedback.paused) activeRoundSeconds += dt;
   const gamepads = navigator.getGamepads?.() ?? [];
   const gamepadInput = readGamepadInput(firstUsableGamepad(gamepads));
   const gamepadPrimaryPressed = gamepadButtonJustPressed(
@@ -886,6 +992,8 @@ engine.runRenderLoop(() => {
     camera.position.y = 1.7;
   }
 
+  updateQualityWatchdog(dt);
+
   if (devFpsEl) {
     devFpsTimer += dt;
     if (devFpsTimer >= 0.25) {
@@ -895,8 +1003,12 @@ engine.runRenderLoop(() => {
   }
 
   if (arena) {
+    liveEntities.length = 0;
+    for (const e of entities) {
+      if (e.alive && e.body && !e.body.isDisposed()) liveEntities.push(e);
+    }
     updateGameEntities({
-      entities: entities.filter(e => e.alive && e.body && !e.body.isDisposed()),
+      entities: liveEntities,
       wallBoxes: arena.wallBoxes,
       envSpawnHalfXZ: arena.envSpawnHalfXZ,
       feedbackPaused: gameFeedback.paused,

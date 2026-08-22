@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="sky" x1="0" x2="0" y1="0" y2="1">
+      <stop stop-color="#0c3158"/>
+      <stop offset=".6" stop-color="#218dc4"/>
+      <stop offset="1" stop-color="#bdeeff"/>
+    </linearGradient>
+    <linearGradient id="floor" x1="0" x2="0" y1="0" y2="1">
+      <stop stop-color="#223c55"/>
+      <stop offset="1" stop-color="#0b1522"/>
+    </linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="11" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1200" height="630" fill="url(#sky)"/>
+  <path d="M0 410 1200 410 1200 630H0z" fill="url(#floor)"/>
+  <g fill="#d5c9c1" stroke="#738192" stroke-width="7">
+    <path d="M126 85h93l14 325H112z"/><path d="M160 44h25v366h-25z"/>
+    <path d="M358 135h83l13 275H345z"/><path d="M388 99h23v311h-23z"/>
+    <path d="M757 115h88l13 295H744z"/><path d="M789 73h23v337h-23z"/>
+    <path d="M1000 52h96l17 358H984z"/><path d="M1037 14h25v396h-25z"/>
+  </g>
+  <g stroke="#eaf8ff" stroke-width="8" fill="none" opacity=".92">
+    <path d="M0 511h1200M0 570h1200M200 410l-100 220M430 410l-40 220M770 410l40 220M1000 410l100 220" opacity=".25"/>
+  </g>
+  <g filter="url(#glow)" stroke="#07111c" stroke-width="11">
+    <circle cx="509" cy="338" r="50" fill="#00c853"/>
+    <path d="m662 277 58 100-58 100-58-100z" fill="#ff2d2d"/>
+    <rect x="864" y="303" width="106" height="106" rx="8" fill="#ffd600"/>
+  </g>
+  <g fill="#071a2d" font-family="Arial, sans-serif">
+    <text x="74" y="98" font-size="25" letter-spacing="8" opacity=".88">BABYLON.JS FIRST-PERSON HUNT</text>
+    <text x="70" y="184" font-size="74" font-weight="800" letter-spacing="4">SOLIDS HUNTER</text>
+    <text x="76" y="234" font-size="28" letter-spacing="3">READ THE RULE. HUNT THE MATCHING SOLIDS.</text>
+  </g>
+</svg>

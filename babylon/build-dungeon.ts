@@ -41,11 +41,11 @@ export function buildDungeonScene(scene: Scene): ArenaBuildResult {
 
   scene.clearColor = new Color4(0.02, 0.02, 0.02, 1);
   scene.fogMode = Scene.FOGMODE_LINEAR;
-  scene.fogStart = 10;
-  scene.fogEnd = 45;
+  scene.fogStart = 12;
+  scene.fogEnd = 50;
   scene.fogColor = new Color3(0.02, 0.02, 0.02);
 
-  addAmbientFill(scene, lights, 0x101010, 0.15); // Very low ambient
+  addAmbientFill(scene, lights, 0x1b1c22, 0.21); // Keep walls readable below torch light
   addPoint(scene, lights, 0xff5500, 1.8, 0, 0.5, 0, 40); // Central bonfire
   
   // Torches on walls

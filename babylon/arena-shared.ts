@@ -19,6 +19,18 @@ import {
   VertexBuffer,
 } from '@babylonjs/core';
 
+/**
+ * Side effect: registers the shadow-map depth shaders. Same trap as
+ * `@babylonjs/core/Culling/ray` in `main.ts` — without these the bundler
+ * tree-shakes the shader sources out, `ShadowGenerator` renders its depth pass
+ * with no fragment output (WebGL reports "missing fragment shader outputs"),
+ * the shadow map stays all-zero, and every arena renders silently unshadowed.
+ */
+import '@babylonjs/core/Shaders/shadowMap.fragment';
+import '@babylonjs/core/Shaders/shadowMap.vertex';
+import '@babylonjs/core/Shaders/depth.fragment';
+import '@babylonjs/core/Shaders/depth.vertex';
+
 import { envTintHex, wallColorInPalette } from './env-colors';
 import { stylePbrSurfaceMaterial, type MaterialSurfaceRole } from './material-style';
 import {
@@ -1111,8 +1123,10 @@ export function disposeArenaResources(
   }
 }
 
-function meshShouldCastShadow(mesh: Mesh): boolean {
+/** Sky domes, clouds and unlit deco must never darken the scene. */
+function meshIsLitGeometry(mesh: Mesh): boolean {
   if (mesh.name === 'sky') return false;
+  if (mesh.name === 'duomoAzureSky') return false;
   if (mesh.name.startsWith('cloudPlane_')) return false;
   const mat = mesh.material;
   if (mat && 'disableLighting' in mat && (mat as StandardMaterial).disableLighting) {
@@ -1122,22 +1136,72 @@ function meshShouldCastShadow(mesh: Mesh): boolean {
 }
 
 /**
+ * Ground and ceiling planes span the whole arena. Leaving them in the caster
+ * set blows the directional's ortho extents out to arena scale, which spreads
+ * the 2048 map so thin that every shadow turns to mush. They receive, never cast.
+ */
+function meshIsArenaShell(mesh: Mesh): boolean {
+  const n = mesh.name;
+  return (
+    n.startsWith('floor_') ||
+    n.startsWith('duomoFloor') ||
+    n === 'ceil' ||
+    n === 'dungeonCeil'
+  );
+}
+
+function meshShouldCastShadow(mesh: Mesh): boolean {
+  return meshIsLitGeometry(mesh) && !meshIsArenaShell(mesh);
+}
+
+/**
  * Exponential blur shadows from the `arenaSun` directional. Skips unlit deco / sky / clouds.
  */
-export function attachArenaShadows(scene: Scene, lights: Light[], meshes: Mesh[]): ShadowGenerator | null {
+export function attachArenaShadows(
+  scene: Scene,
+  lights: Light[],
+  meshes: Mesh[],
+): ShadowGenerator | null {
   const sun = lights.find(
     (l): l is DirectionalLight => l instanceof DirectionalLight && l.name === 'arenaSun',
   );
   if (!sun) return null;
 
+  /**
+   * KNOWN LIMITATION — duomo and lab still render unshadowed.
+   *
+   * Materials only compile the first `maxSimultaneousLights` (4) entries of
+   * `scene.lights`. Those two arenas call `addSunLight` last, after a dozen
+   * point lights, so their `arenaSun` sits outside that budget and contributes
+   * neither light nor shadow. Forest creates its sun early and is unaffected.
+   *
+   * Promoting the sun (via `renderPriority`, or by moving the `addSunLight`
+   * call earlier) does put it in budget, but it evicts a point light in the
+   * process and visibly changes arenas whose lighting was hand-tuned around
+   * the current mix. That re-tune is a deliberate art decision, not a drive-by
+   * fix, so it is left alone here.
+   */
+
   const sg = new ShadowGenerator(2048, sun);
-  sg.useBlurExponentialShadowMap = true;
-  sg.blurKernel = 26;
+  /**
+   * PCF rather than blur-exponential: crisper contact edges, and it does not
+   * depend on the depth range staying inside the exponential's usable band.
+   *
+   * The extents stay on Babylon's own auto-fit. Pinning them by hand looks
+   * tempting for texel density, but the light position it derives is not the
+   * one you would guess, and getting it wrong pushes the casters behind the
+   * near plane and silently produces an empty shadow map. Density is bought
+   * instead by keeping the arena-sized floor and ceiling planes out of the
+   * caster set — see `meshIsArenaShell`.
+   */
+  sg.usePercentageCloserFiltering = true;
+  sg.filteringQuality = ShadowGenerator.QUALITY_MEDIUM;
   sg.darkness = 0.38;
-  sg.bias = 0.00065;
-  sg.normalBias = 0.018;
+  sg.bias = 0.00035;
+  sg.normalBias = 0.012;
 
   for (const m of meshes) {
+    if (!meshIsLitGeometry(m)) continue;
     m.receiveShadows = true;
     if (meshShouldCastShadow(m)) {
       sg.addShadowCaster(m, true);
@@ -1159,12 +1223,18 @@ export function makeArenaBuildResult(
   spawnPosition: Vector3,
 ): ArenaBuildResult {
   const shadowGen = attachArenaShadows(scene, lights, meshes);
+  /** Entity bodies are re-registered every round; the previous round's are gone. */
+  let entityCasters: AbstractMesh[] = [];
   return {
     wallBoxes,
     envSpawnHalfXZ,
     spawnPosition,
     registerEntityShadowMeshes(bodies: AbstractMesh[]) {
       if (!shadowGen) return;
+      for (const stale of entityCasters) {
+        shadowGen.removeShadowCaster(stale);
+      }
+      entityCasters = [...bodies];
       for (const b of bodies) {
         b.receiveShadows = true;
         shadowGen.addShadowCaster(b);

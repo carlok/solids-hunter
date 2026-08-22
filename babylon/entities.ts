@@ -8,7 +8,7 @@ import {
   Vector3,
 } from '@babylonjs/core';
 
-import { COLORS, generateHuntRule, SHAPES } from '@lib/game-rules.js';
+import { generateHuntRule, SHAPES } from '@lib/game-rules.js';
 
 import { stylePbrSurfaceMaterial } from './material-style';
 
@@ -24,6 +24,30 @@ export type SolidEntityRecord = {
   shape: SolidShape;
   colorName: string;
   isMatch: boolean;
+};
+
+/** Paid once per shape now that geometry is shared, so it can afford to be higher. */
+const BAR_TESSELLATION = 12;
+const RING_TESSELLATION = 48;
+
+export const OUTLINE_BASE_WIDTH = 0.018;
+export const OUTLINE_PULSE_WIDTH = 0.004;
+
+/**
+ * Ray-catch diameter per shape: the bounding sphere of the drawn cage.
+ *
+ * These are open cages, so most of the silhouette is the outer edges. A hitbox
+ * narrower than the drawn shape means shots that visibly strike the solid pass
+ * straight through it. The cube's corners sit at sqrt(3) * 0.44 + 0.06 = 0.82
+ * from centre, so anything under 1.64 across is already too small for it.
+ * Sphere and cylinder cages really are narrower and get tighter boxes, which is
+ * where the accuracy is won without costing hittability.
+ */
+const HITBOX_DIAMETER: Record<SolidShape, number> = {
+  Sphere: 1.05,
+  Cube: 1.66,
+  Tetrahedron: 1.62,
+  Cylinder: 1.3,
 };
 
 function rgbToColor3(rgb: number, out: Color3): void {
@@ -53,7 +77,7 @@ function buildCubeBars(name: string, scene: Scene): BabylonMesh {
     const tube = MeshBuilder.CreateTube(`tube_${i}`, {
       path: [new Vector3(p1x, p1y, p1z), new Vector3(p2x, p2y, p2z)],
       radius: r,
-      tessellation: 8,
+      tessellation: BAR_TESSELLATION,
     }, scene);
     bars.push(tube);
   }
@@ -64,7 +88,8 @@ function buildCubeBars(name: string, scene: Scene): BabylonMesh {
 
 function buildTetrahedronBars(name: string, scene: Scene): BabylonMesh {
   const bars: BabylonMesh[] = [];
-  const r = 0.06;
+  /** Thinner than the cube's bars so the triangular profile reads, not the tubes. */
+  const r = 0.05;
   const a = 0.58;
   const points = [
     new Vector3(a, a, a),
@@ -80,13 +105,14 @@ function buildTetrahedronBars(name: string, scene: Scene): BabylonMesh {
     const tube = MeshBuilder.CreateTube(`tube_${i}`, {
       path: [p1, p2],
       radius: r,
-      tessellation: 8,
+      tessellation: BAR_TESSELLATION,
     }, scene);
     bars.push(tube);
   }
   const merged = BabylonMesh.MergeMeshes(bars, true, true, undefined, false, true);
   if (merged) {
-    merged.scaling.setAll(0.65);
+    /** 0.58 * 2 * 0.76 ~= 0.88, matching the cube so the smallest-to-read shape is not also the smallest. */
+    merged.scaling.setAll(0.76);
     merged.bakeCurrentTransformIntoVertices();
     merged.name = name;
   }
@@ -96,7 +122,7 @@ function buildTetrahedronBars(name: string, scene: Scene): BabylonMesh {
 function buildSphereRings(name: string, scene: Scene): BabylonMesh {
   const r = 0.44;
   const t = 0.055;
-  const tess = 32;
+  const tess = RING_TESSELLATION;
   const opts = { diameter: r * 2, thickness: t * 2, tessellation: tess };
 
   // Default torus lies in XZ plane (normal = Y)
@@ -120,60 +146,99 @@ function buildSphereRings(name: string, scene: Scene): BabylonMesh {
   return merged ?? MeshBuilder.CreateSphere(name, { diameter: 0.88 }, scene);
 }
 
-/*function buildSphereRings(name: string, scene: Scene): BabylonMesh {
-  const r = 0.44;  // orbit radius of the ring
-  const t = 0.055; // tube radius
-  const tess = 32;
 
-  // XY plane (no rotation)
-  const ringXY = MeshBuilder.CreateTorus(`${name}_xy`, {
-    diameter: r * 2, thickness: t * 2, tessellation: tess,
-  }, scene);
+/**
+ * Two end rings joined by vertical bars. The previous solid open-ended tube was
+ * the only shape not speaking the wireframe-cage language, and at hunting
+ * distance it read as an unidentifiable blob rather than a cylinder.
+ */
+function buildCylinderCage(name: string, scene: Scene): BabylonMesh {
+  const parts: BabylonMesh[] = [];
+  const r = 0.055;
+  const radius = 0.36;
+  const halfH = 0.44;
+  const ringOpts = {
+    diameter: radius * 2,
+    thickness: r * 2,
+    tessellation: RING_TESSELLATION,
+  };
 
-  // XZ plane (rotate 90° around X)
-  const ringXZ = MeshBuilder.CreateTorus(`${name}_xz`, {
-    diameter: r * 2, thickness: t * 2, tessellation: tess,
-  }, scene);
-  ringXZ.rotation.x = Math.PI / 2;
-  ringXZ.bakeCurrentTransformIntoVertices();
+  for (const y of [-halfH, halfH]) {
+    const ring = MeshBuilder.CreateTorus(`${name}_ring_${y}`, ringOpts, scene);
+    ring.position.y = y;
+    ring.bakeCurrentTransformIntoVertices();
+    parts.push(ring);
+  }
 
-  // YZ plane (rotate 90° around Y)
-  const ringYZ = MeshBuilder.CreateTorus(`${name}_yz`, {
-    diameter: r * 2, thickness: t * 2, tessellation: tess,
-  }, scene);
-  ringYZ.rotation.y = Math.PI / 2;
-  ringYZ.bakeCurrentTransformIntoVertices();
+  const bars = 6;
+  for (let i = 0; i < bars; i++) {
+    const a = (i / bars) * Math.PI * 2;
+    const x = Math.cos(a) * radius;
+    const z = Math.sin(a) * radius;
+    parts.push(
+      MeshBuilder.CreateTube(`${name}_bar_${i}`, {
+        path: [new Vector3(x, -halfH, z), new Vector3(x, halfH, z)],
+        radius: r,
+        tessellation: BAR_TESSELLATION,
+      }, scene),
+    );
+  }
 
-  const merged = BabylonMesh.MergeMeshes(
-    [ringXY, ringXZ, ringYZ], true, true, undefined, false, true
-  );
+  const merged = BabylonMesh.MergeMeshes(parts, true, true, undefined, false, true);
   if (merged) merged.name = name;
-  return merged ?? MeshBuilder.CreateSphere(name, { diameter: 0.88 }, scene);
-}*/
+  return merged ?? MeshBuilder.CreateCylinder(name, { height: 0.88, diameter: 0.72 }, scene);
+}
 
-
-function buildShapeMesh(scene: Scene, shape: SolidShape, suffix: string): BabylonMesh {
+function buildShapeMesh(scene: Scene, shape: SolidShape): BabylonMesh {
   switch (shape) {
     case 'Sphere':
-      return buildSphereRings(`ent_${shape}_${suffix}`, scene);
+      return buildSphereRings(`ent_tpl_${shape}`, scene);
     case 'Tetrahedron':
-      return buildTetrahedronBars(`ent_${shape}_${suffix}`, scene);
+      return buildTetrahedronBars(`ent_tpl_${shape}`, scene);
     case 'Cube':
-      return buildCubeBars(`ent_${shape}_${suffix}`, scene);
+      return buildCubeBars(`ent_tpl_${shape}`, scene);
     case 'Cylinder':
-      return MeshBuilder.CreateCylinder(`ent_${shape}_${suffix}`, {
-        height: 0.88,
-        diameter: 0.64,
-        tessellation: 16,
-        cap: BabylonMesh.NO_CAP,
-        sideOrientation: BabylonMesh.DOUBLESIDE,
-      }, scene);
+      return buildCylinderCage(`ent_tpl_${shape}`, scene);
     default: {
       const _exhaustive: never = shape;
       return _exhaustive;
     }
   }
 }
+
+/**
+ * One hidden template mesh per shape, per scene. Every solid is a `clone()` of
+ * its template, and Babylon clones share the underlying `Geometry` — so a round
+ * costs four geometry builds at most instead of one merge per entity.
+ */
+const shapeTemplates = new WeakMap<Scene, Map<SolidShape, BabylonMesh>>();
+
+function shapeTemplate(scene: Scene, shape: SolidShape): BabylonMesh {
+  let perScene = shapeTemplates.get(scene);
+  if (!perScene) {
+    perScene = new Map();
+    shapeTemplates.set(scene, perScene);
+  }
+  const cached = perScene.get(shape);
+  if (cached && !cached.isDisposed()) return cached;
+
+  const built = buildShapeMesh(scene, shape);
+  built.setEnabled(false);
+  built.isPickable = false;
+  perScene.set(shape, built);
+  return built;
+}
+
+/** Drop the cached templates for a scene (arena teardown / scene dispose). */
+export function disposeShapeTemplates(scene: Scene): void {
+  const perScene = shapeTemplates.get(scene);
+  if (!perScene) return;
+  for (const tpl of perScene.values()) {
+    if (!tpl.isDisposed()) tpl.dispose(false, true);
+  }
+  shapeTemplates.delete(scene);
+}
+
 let nextEntityId = 0;
 
 /**
@@ -197,28 +262,28 @@ export function createSolidEntity(
   const root = new TransformNode(`ent_root_${entityId}`, scene);
   root.position.copyFrom(position);
 
-  const body = buildShapeMesh(scene, shape, `${entityId}_body`);
+  const body = shapeTemplate(scene, shape).clone(`ent_${shape}_${entityId}_body`);
+  body.setEnabled(true);
   const mat = new PBRMaterial(`ent_body_${entityId}`, scene);
   rgbToColor3(colorHex, mat.albedoColor);
   mat.emissiveColor.copyFrom(mat.albedoColor);
-  mat.emissiveColor.scaleInPlace(0.14);
+  mat.emissiveColor.scaleInPlace(0.18);
   stylePbrSurfaceMaterial(mat, 'huntSolid');
   body.material = mat;
   body.parent = root;
   body.isPickable = false;
   body.renderOutline = true;
-  body.outlineColor = mat.albedoColor.clone().scale(0.55).addInPlace(new Color3(0.22, 0.24, 0.26));
-  body.outlineWidth = 0.012;
-  const pulseOffset = entityId * 0.73;
-  const pulseObs = scene.onBeforeRenderObservable.add(() => {
-    const t = performance.now() * 0.001 + pulseOffset;
-    body.outlineWidth = 0.012 + (Math.sin(t * 2.1) + 1) * 0.006;
-  });
-  body.onDisposeObservable.add(() => {
-    scene.onBeforeRenderObservable.remove(pulseObs);
-  });
+  body.outlineColor = new Color3(0.025, 0.035, 0.05);
+  /** Width is animated from `updateGameEntities`, alongside the emissive pulse. */
+  body.outlineWidth = OUTLINE_BASE_WIDTH;
 
-  const hitbox = MeshBuilder.CreateSphere(`ent_hitbox_${entityId}`, { diameter: 1.6 }, scene);
+  /** Default segments: a coarse sphere is faceted inward and quietly picks
+   *  smaller than its nominal diameter. */
+  const hitbox = MeshBuilder.CreateSphere(
+    `ent_hitbox_${entityId}`,
+    { diameter: HITBOX_DIAMETER[shape] },
+    scene,
+  );
   hitbox.parent = root;
   hitbox.visibility = 0; // invisible but pickable
   hitbox.isPickable = true;

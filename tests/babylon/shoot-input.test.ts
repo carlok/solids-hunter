@@ -1,7 +1,7 @@
 import { NullEngine, Scene, UniversalCamera, Vector3 } from '@babylonjs/core';
 import { describe, expect, it } from 'vitest';
 
-import { applyWrongHitPenalty, createCenterShotRay } from '../../babylon/shoot-input';
+import { applyWrongHitPenalty, createCenterShotRay, hitFeedbackFor } from '../../babylon/shoot-input';
 
 function expectVectorClose(actual: Vector3, expected: Vector3): void {
   expect(actual.x).toBeCloseTo(expected.x, 6);
@@ -38,5 +38,20 @@ describe('applyWrongHitPenalty', () => {
     expect(applyWrongHitPenalty(20)).toEqual({ score: 15, gameOver: false });
     expect(applyWrongHitPenalty(5)).toEqual({ score: 0, gameOver: true });
     expect(applyWrongHitPenalty(0)).toEqual({ score: 0, gameOver: false });
+  });
+});
+
+describe('hitFeedbackFor', () => {
+  it('keeps correct and wrong feedback visually distinct', () => {
+    expect(hitFeedbackFor('correct')).toEqual({
+      color: '#00ff88',
+      alpha: 0.28,
+      reticleClass: 'is-hit-correct',
+    });
+    expect(hitFeedbackFor('wrong')).toEqual({
+      color: '#ff2200',
+      alpha: 0.42,
+      reticleClass: 'is-hit-wrong',
+    });
   });
 });

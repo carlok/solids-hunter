@@ -3,7 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="A first-person educational hunt for colored geometric solids, built with Babylon.js." />
+  <meta name="theme-color" content="#0b1d32" />
+  <meta name="application-version" content="2026-08-22-06-56" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Solids Hunter" />
+  <meta property="og:description" content="Read the rule. Hunt the matching solids." />
+  <meta property="og:image" content="/og-preview.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Solids Hunter" />
+  <meta name="twitter:description" content="Read the rule. Hunt the matching solids." />
+  <meta name="twitter:image" content="/og-preview.png" />
   <title>Solids Hunter</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/css/main.css" />
 </head>
 <body>
@@ -30,14 +42,14 @@
       <li><strong>Move:</strong> WASD / arrow keys, gamepad left stick, or mobile left thumb pad</li>
       <li><strong>Look:</strong> mouse (pointer lock after you start), gamepad right stick, or drag the right side of the screen on mobile</li>
       <li><strong>Shoot:</strong> left-click, gamepad RT/R2, or mobile FIRE button</li>
-      <li><strong>Gamepad:</strong> A starts/resumes; Start/Menu pauses</li>
+      <li><strong>Gamepad:</strong> D-pad / left stick selects arenas, A selects / starts / resumes, Start/Menu pauses</li>
       <li><strong>Rule:</strong> shown in full on the hunt screen; during play it stays at the <strong>top center</strong> of the HUD</li>
-      <li><strong>Sound:</strong> <strong>M</strong> toggles mute anytime; arena / rule / pause screens also have a <strong>Sound: ON/OFF</strong> button; in-game, top-left icon or <strong>M</strong> (mute also silences spoken coach lines)</li>
+      <li><strong>Sound:</strong> <strong>M</strong> toggles mute anytime; arena / rule / pause screens also have a <strong>Sound: ON/OFF</strong> button; Ambient sound is optional and starts off. In-game, top-left icon or <strong>M</strong> (mute also silences spoken coach lines)</li>
       <li><strong>Hit coach:</strong> arena / rule / pause — cycle <strong>Coach: OFF / VOICE / MODAL</strong>. Wrong hits: voice-only pauses targets briefly with a subtitle; modal+voice unlocks the cursor until you confirm. Correct hits stay instant; coach adds optional spoken tips. Speech picks the best available <strong>English</strong> voice from your browser (see <a href="https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesisUtterance/voice" target="_blank" rel="noopener">MDN</a>) and reads a <strong>short</strong> line aloud (like <a href="https://github.com/carlok/agility-trainer" target="_blank" rel="noopener">Agility Trainer</a>); the modal still shows the full text. Set <code>localStorage.solidsHunterHitConfirmN</code> to limit coaching to the first N hits per round (0 = unlimited).</li>
       <li><strong>Pause:</strong> Esc — opens pause; click Resume to continue</li>
       <li><strong>Menu:</strong> ☰ top-left — Help, Credits, Main menu</li>
     </ul>
-    <p>Solids move in different ways (drift, bounce, orbit, slide). Correct match +10 points. Wrong target −5. Clear every matching solid to finish the round.</p>
+    <p>Solids move in different ways (drift, bounce, orbit, slide). Correct match +10 points. Wrong target −5. Clear every matching solid to finish the round. New rounds adapt gently to rule accuracy and completion time, without changing while you play.</p>
   </div>
 </div>
 
@@ -57,7 +69,7 @@
     <p><strong>Solids Hunter</strong></p>
     <p>By <strong>Carlo Perassi</strong>.</p>
     <p>Thanks to <strong>Massimiliano Balestrieri</strong>, <strong>Alessandro Battezzati</strong>, <strong>Giacomo Leonzi</strong>, <strong>Vittorio Perassi</strong>, and <strong>Massimo Rossi</strong>.</p>
-    <p>Version <code>2026-05-17-10-48</code></p>
+    <p>Version <code id="release-version"></code></p>
     <p>Source &amp; updates: <a href="https://github.com/carlok/solids-hunter" target="_blank" rel="noopener">github.com/carlok/solids-hunter</a></p>
     <p>Built with <a href="https://www.babylonjs.com/" target="_blank" rel="noopener">Babylon.js</a> and Web Pointer Lock. Procedural environments and shapes; a small bundled <abbr title="image-based lighting">IBL</abbr> map drives PBR reflections.</p>
     <p style="margin-top:1rem;font-size:0.72rem;color:#7a8799;">Released under the MIT License. Thanks for playing.</p>
@@ -76,6 +88,7 @@
     <label class="checkbox-label"><input type="checkbox" id="menu-ambient-toggle" class="ambient-menu-checkbox" aria-label="Ambient music toggle"> Ambient</label>
     <label class="checkbox-label"><input type="checkbox" id="menu-coach-btn" class="coach-menu-checkbox" title="Enable coaching feedback" aria-label="Coach toggle"> Coach</label>
   </div>
+  <p class="menu-gamepad-hint">GAMEPAD: D-PAD / LEFT STICK SELECT · A ENTER</p>
   <div class="env-grid">
     <div class="env-card" data-env="dungeon" role="button" tabindex="0">
       <div class="icon">🏰</div>

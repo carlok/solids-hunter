@@ -150,11 +150,14 @@ function fallback(name: SoundName, vol?: number): void {
       noiseBurst(0.05, v * 0.4);
       break;
     case 'hit_correct':
-      beep(523, 0.08, v * 0.2);
-      setTimeout(() => beep(784, 0.12, v * 0.18), 60);
+      {
+        const rate = hitPlaybackRate('correct', Math.random());
+        beep(523 * rate, 0.08, v * 0.2);
+        setTimeout(() => beep(784 * rate, 0.12, v * 0.18), 60);
+      }
       break;
     case 'hit_wrong':
-      beep(120, 0.2, v * 0.25, 'sawtooth');
+      beep(120 * hitPlaybackRate('wrong', Math.random()), 0.2, v * 0.25, 'sawtooth');
       break;
     case 'round_win':
       beep(392, 0.1, v * 0.2);
@@ -167,6 +170,11 @@ function fallback(name: SoundName, vol?: number): void {
     default:
       break;
   }
+}
+
+export function hitPlaybackRate(kind: 'correct' | 'wrong', random: number): number {
+  const variation = Math.max(0, Math.min(1, random));
+  return kind === 'correct' ? 0.96 + variation * 0.08 : 0.94 + variation * 0.1;
 }
 
 function createLoopingNoise(c: AudioContext): AudioBufferSourceNode {
@@ -345,10 +353,10 @@ export const GameAudio = {
     playBuffer('shoot', 0.45, 1);
   },
   hitCorrect(): void {
-    playBuffer('hit_correct', 0.42, 1);
+    playBuffer('hit_correct', 0.42, hitPlaybackRate('correct', Math.random()));
   },
   hitWrong(): void {
-    playBuffer('hit_wrong', 0.42, 1);
+    playBuffer('hit_wrong', 0.42, hitPlaybackRate('wrong', Math.random()));
   },
   roundWin(): void {
     playBuffer('round_win', 0.4, 1);

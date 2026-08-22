@@ -53,11 +53,20 @@ function copySoundsToDistPlugin(): Plugin {
         fs.cpSync(modelsSrc, modelsDest, { recursive: true });
       }
 
+      /**
+       * Only the floor texture is fetched at runtime. The rest of `assets/duomo`
+       * is source material — the reference plan scan, the rhythm JSON, the
+       * pillar GLB nothing loads, the Python generators and the prompts — and
+       * copying the directory wholesale shipped ~3.3MB of it to every player.
+       */
+      const duomoRuntimeFiles = ['mosaico_marmoreo_rinascimentale_ornamentale.jpg'];
       const duomoSrc = resolve(__dirname, 'assets/duomo');
       const duomoDest = resolve(__dirname, 'dist-babylon/assets/duomo');
-      if (fs.existsSync(duomoSrc)) {
+      for (const file of duomoRuntimeFiles) {
+        const from = resolve(duomoSrc, file);
+        if (!fs.existsSync(from)) continue;
         fs.mkdirSync(duomoDest, { recursive: true });
-        fs.cpSync(duomoSrc, duomoDest, { recursive: true });
+        fs.copyFileSync(from, resolve(duomoDest, file));
       }
 
       const src = resolve(__dirname, 'assets/sounds');
@@ -71,12 +80,16 @@ function copySoundsToDistPlugin(): Plugin {
 
 export default defineConfig({
   root: '.',
-  publicDir: false,
+  /**
+   * `index.html` points at `/favicon.svg` and `/og-preview.png`, which live in
+   * `public/`. With the public dir disabled they were never copied, so a
+   * production build shipped a broken favicon and a broken social preview.
+   */
+  publicDir: 'public',
   plugins: [rootAssetsPlugin(), copySoundsToDistPlugin()],
   build: {
     outDir: 'dist-babylon',
     emptyOutDir: true,
-    copyPublicDir: false,
   },
   resolve: {
     alias: {

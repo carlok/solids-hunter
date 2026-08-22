@@ -139,6 +139,13 @@
     font-weight: 800;
   }
   #env-screen .subtitle { color: #5a6578; font-size: 0.78rem; letter-spacing: 0.35em; margin-bottom: 1rem; }
+  .menu-gamepad-hint {
+    margin: -0.75rem 0 1rem;
+    color: #5a6578;
+    font: 700 0.58rem/1.35 'Rajdhani', sans-serif;
+    letter-spacing: 0.13em;
+    text-align: center;
+  }
 
   .menu-settings-row,
   .hunt-settings-row,
@@ -383,11 +390,37 @@
   .hud-reticle .reticle-ring-outer {
     animation: reticle-breathe 3.2s ease-in-out infinite;
   }
+  .hud-reticle.is-hit-correct,
+  .hud-reticle.is-hit-wrong {
+    animation: reticle-confirm 0.18s ease-out;
+  }
+  .hud-reticle.is-hit-correct {
+    filter: drop-shadow(0 0 8px rgba(82, 255, 195, 0.95));
+  }
+  .hud-reticle.is-hit-wrong {
+    filter: drop-shadow(0 0 8px rgba(255, 86, 76, 0.95));
+  }
+  .hud-reticle.is-hit-correct .reticle-ring-outer {
+    animation: none;
+    opacity: 1;
+    stroke: #67ffd0;
+  }
+  .hud-reticle.is-hit-wrong .reticle-ring-outer {
+    animation: none;
+    opacity: 1;
+    stroke: #ff766b;
+  }
+  @keyframes reticle-confirm {
+    0% { scale: 1; }
+    45% { scale: 1.1; }
+    100% { scale: 1; }
+  }
   @keyframes reticle-breathe {
     0%, 100% { opacity: 0.55; }
     50% { opacity: 0.88; }
   }
   @media (prefers-reduced-motion: reduce) {
+    .hud-reticle,
     .hud-reticle .reticle-ring-outer { animation: none; opacity: 0.72; }
   }
 

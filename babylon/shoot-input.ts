@@ -12,6 +12,7 @@ import { resolveEntityIdFromPick } from './entity-pick';
 import type { GameEntity } from './entity-motion';
 import { gameFeedback } from './entity-motion';
 import { GameAudio } from './game-audio';
+import type { RoundOutcome } from './round-director';
 import { spawnImpactMark, spawnShotTracer } from './shot-tracer';
 
 const MAX_TRACE = 135;
@@ -21,6 +22,7 @@ export type BabylonShootHud = {
   scoreEl: HTMLElement;
   targetsEl: HTMLElement;
   flashEl: HTMLElement;
+  reticleEl: HTMLElement;
   roundEndEl: HTMLElement;
   roundEndLabelEl: HTMLElement;
   roundEndTitleEl: HTMLElement;
@@ -33,13 +35,15 @@ export type BabylonGameRuntime = {
   matchLeft: number;
   roundEnded: boolean;
   shotsThisRound: number;
+  correctHits: number;
+  wrongHits: number;
 };
 
 export type BabylonShootContext = {
   getEntities: () => GameEntity[];
   getMatchLeft: () => number;
   /** Invoked after round-win sound and pointer unlock; shows round-end UI. */
-  onRoundComplete: () => void;
+  onRoundComplete: (outcome: RoundOutcome) => void;
 };
 
 export type BabylonShooter = {
@@ -60,6 +64,7 @@ function showRoundEnd(
   runtime: BabylonGameRuntime,
   hud: BabylonShootHud,
   shootContext: BabylonShootContext,
+  outcome: RoundOutcome,
   label: string,
   title: string,
   pointsLabel = 'POINTS',
@@ -71,14 +76,37 @@ function showRoundEnd(
   hud.roundEndPointsEl.textContent = pointsLabel;
   hud.roundEndEl.classList.remove('hidden');
   hud.finalScoreEl.textContent = String(runtime.score);
-  shootContext.onRoundComplete();
+  shootContext.onRoundComplete(outcome);
 }
 
-function flash(hud: BabylonShootHud, color: string, alpha: number): void {
-  hud.flashEl.style.background = color;
-  hud.flashEl.style.opacity = String(alpha);
+export type HitFeedbackKind = 'correct' | 'wrong';
+
+export type HitFeedback = {
+  color: string;
+  alpha: number;
+  reticleClass: string;
+};
+
+export function hitFeedbackFor(kind: HitFeedbackKind): HitFeedback {
+  return kind === 'correct'
+    ? { color: '#00ff88', alpha: 0.28, reticleClass: 'is-hit-correct' }
+    : { color: '#ff2200', alpha: 0.42, reticleClass: 'is-hit-wrong' };
+}
+
+function flash(hud: BabylonShootHud, kind: HitFeedbackKind): void {
+  const feedback = hitFeedbackFor(kind);
+  hud.flashEl.style.background = feedback.color;
+  hud.flashEl.style.opacity = String(feedback.alpha);
+  hud.reticleEl.classList.remove('is-hit-correct', 'is-hit-wrong');
+  void hud.reticleEl.offsetWidth;
+  hud.reticleEl.classList.add(feedback.reticleClass);
+  const feedbackId = String(performance.now());
+  hud.reticleEl.dataset.hitFeedbackId = feedbackId;
   window.setTimeout(() => {
     hud.flashEl.style.opacity = '0';
+    if (hud.reticleEl.dataset.hitFeedbackId === feedbackId) {
+      hud.reticleEl.classList.remove(feedback.reticleClass);
+    }
   }, 180);
 }
 
@@ -173,26 +201,28 @@ export function attachBabylonShooting(options: {
     if (ent.isMatch) {
       runtime.score += 10;
       runtime.matchLeft--;
+      runtime.correctHits++;
       ent.dying = true;
       ent.dyingT = 0;
-      flash(hud, '#00ff88', 0.28);
+      flash(hud, 'correct');
       GameAudio.hitCorrect();
       updateHud(runtime, hud);
       if (runtime.matchLeft <= 0) {
         const endRound = (): void => {
           GameAudio.roundWin();
-          showRoundEnd(runtime, hud, shootContext, 'ROUND COMPLETE', 'ALL TARGETS ELIMINATED');
+          showRoundEnd(runtime, hud, shootContext, 'complete', 'ROUND COMPLETE', 'ALL TARGETS ELIMINATED');
         };
         scheduleEndRoundAfterCorrectCoach(ent, coachThis, shootContext.getMatchLeft(), endRound);
       }
     } else {
       const penalty = applyWrongHitPenalty(runtime.score);
       runtime.score = penalty.score;
-      flash(hud, '#ff2200', 0.42);
+      runtime.wrongHits++;
+      flash(hud, 'wrong');
       GameAudio.hitWrong();
       updateHud(runtime, hud);
       if (penalty.gameOver) {
-        showRoundEnd(runtime, hud, shootContext, 'GAME OVER', 'SCORE RETURNED TO ZERO', 'FINAL SCORE');
+        showRoundEnd(runtime, hud, shootContext, 'gameOver', 'GAME OVER', 'SCORE RETURNED TO ZERO', 'FINAL SCORE');
         return true;
       }
       onHitWrongAfterScoring(ent, coachThis);

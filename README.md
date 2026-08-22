@@ -2,6 +2,16 @@
 
 First-person hunt built with [Babylon.js](https://www.babylonjs.com/). Pick an arena, read the round rule, then shoot only solids that satisfy the rule with desktop, gamepad, or mobile controls.
 
+## Screenshots
+
+![Forest arena, hunting Purple AND Cube](docs/screenshots/forest-purple-and-cube.jpg)
+
+*Forest — the rule is `Purple AND Cube`, so the purple cube counts and the yellow cylinder does not. Every solid is drawn as an open wireframe cage so its shape stays readable at range.*
+
+![Duomo arena, hunting NOT Cylinder](docs/screenshots/duomo-not-cylinder.jpg)
+
+*Duomo — a `NOT Cylinder` round opening down the nave. The HUD keeps the active rule overhead and the remaining target count bottom left.*
+
 ## Hunt rules
 
 Each round draws a **random boolean rule** over the same seven colors and four shapes. Rules are always **satisfiable** (at least three matching solids are forced into the spawn set). Examples of what you might see:

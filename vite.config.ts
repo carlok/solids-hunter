@@ -2,6 +2,50 @@ import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
 import { resolve } from 'node:path';
 import fs from 'node:fs';
+import { execSync } from 'node:child_process';
+
+/**
+ * Build stamp for the credits modal.
+ *
+ * The `application-version` meta tag used to be a hand-typed string, so it only
+ * changed when someone remembered to change it — the deployed site spent a day
+ * claiming to be the previous day's build. Deriving it means it cannot drift.
+ *
+ * Every lookup is best-effort: a missing git binary or a shallow clone falls
+ * back to the timestamp alone rather than failing the build.
+ */
+function buildVersionStamp(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const stamp =
+    `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())}` +
+    `-${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}`;
+
+  let sha = process.env.VERCEL_GIT_COMMIT_SHA ?? '';
+  if (!sha) {
+    try {
+      sha = execSync('git rev-parse HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+        .toString()
+        .trim();
+    } catch {
+      sha = '';
+    }
+  }
+  return sha ? `${stamp}-${sha.slice(0, 7)}` : stamp;
+}
+
+/** Stamp the version meta tag at build and dev-serve time. */
+function versionStampPlugin(): Plugin {
+  return {
+    name: 'stamp-application-version',
+    transformIndexHtml(html) {
+      return html.replace(
+        /(<meta\s+name="application-version"\s+content=")[^"]*(")/,
+        `$1${buildVersionStamp()}$2`,
+      );
+    },
+  };
+}
 
 /** Serve `/assets/*` from repo-root `assets/` for static dev assets. */
 function rootAssetsPlugin(): Plugin {
@@ -86,7 +130,7 @@ export default defineConfig({
    * production build shipped a broken favicon and a broken social preview.
    */
   publicDir: 'public',
-  plugins: [rootAssetsPlugin(), copySoundsToDistPlugin()],
+  plugins: [versionStampPlugin(), rootAssetsPlugin(), copySoundsToDistPlugin()],
   build: {
     outDir: 'dist-babylon',
     emptyOutDir: true,

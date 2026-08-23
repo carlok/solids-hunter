@@ -19,3 +19,14 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+This MIT licence applies to the source code of Solids Hunter.
+
+Some files in this repository are third-party or generated material carrying
+their own terms — notably the Duomo floor plan (CC BY-SA 4.0), the bundled
+Orbitron and Rajdhani fonts (SIL OFL 1.1), and the environment lighting map.
+They are NOT covered by the grant above.
+
+See THIRD-PARTY.md for the full list and the obligations attached to each.

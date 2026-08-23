@@ -107,7 +107,7 @@ Ambient sound is optional and off by default. It can be enabled from the arena, 
 
 ## Public beta checks
 
-Before publishing, run the test, coverage, and production-build commands above, then smoke-test every arena with keyboard/mouse, gamepad, and landscape mobile controls. The release shell includes standard browser metadata, a favicon, and a social preview asset; no analytics, accounts, or remote AI service are included.
+Before publishing, run the test, coverage, and production-build commands above, then smoke-test every arena with keyboard/mouse, gamepad, and landscape mobile controls. The release shell includes standard browser metadata, a favicon, and a social preview asset; no analytics, accounts, or remote AI service are included. The page makes **no third-party requests at all** — the Orbitron and Rajdhani webfonts (SIL OFL 1.1) are self-hosted from `public/fonts/`, with their licences alongside them. The only data kept is four `localStorage` keys for the sound, ambient, and coach settings. Note that enabling the spoken coach uses the browser's own speech synthesis, and some browsers implement that as a cloud service.
 
 ## License
 

@@ -72,11 +72,30 @@
     <p>Version <code id="release-version"></code></p>
     <p>Source &amp; updates: <a href="https://github.com/carlok/solids-hunter" target="_blank" rel="noopener">github.com/carlok/solids-hunter</a></p>
     <p>Built with <a href="https://www.babylonjs.com/" target="_blank" rel="noopener">Babylon.js</a> and Web Pointer Lock. Procedural environments and shapes; a small bundled <abbr title="image-based lighting">IBL</abbr> map drives PBR reflections.</p>
-    <p style="margin-top:1rem;font-size:0.72rem;color:#7a8799;">Released under the MIT License. Thanks for playing.</p>
+    <p class="credits-footnote">Released under the MIT License. Thanks for playing.</p>
   </div>
 </div>
 
 <canvas id="game" tabindex="0" aria-label="Game view"></canvas>
+
+<!-- Shown until main.ts finishes evaluating. The menu below paints as soon as
+     the CSS lands, but none of its click handlers exist until ~1.1MB of
+     JavaScript has downloaded and parsed, so without this the arena cards look
+     interactive while silently ignoring every click. -->
+<div id="boot-overlay" class="boot-overlay" role="status" aria-live="polite">
+  <div class="boot-title">SOLIDS HUNTER</div>
+  <div class="boot-msg">Loading&hellip;</div>
+</div>
+
+<!-- Unhidden only if the WebGL engine fails to start. Static markup so it does
+     not depend on the script that just failed. -->
+<div id="webgl-error" class="boot-overlay hidden" role="alert">
+  <div class="boot-title">SOLIDS HUNTER</div>
+  <div class="boot-msg">
+    This game needs <strong>WebGL</strong>, and your browser could not start it.<br>
+    Check that hardware acceleration is enabled in your browser settings, or try a different browser.
+  </div>
+</div>
 <div id="vignette" class="hidden"></div>
 <div id="flash"></div>
 

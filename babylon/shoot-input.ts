@@ -128,12 +128,16 @@ export function attachBabylonShooting(options: {
 
   updateHud(runtime, hud);
 
-  const onRoundEndMouseDown = (e: MouseEvent): void => {
-    if (e.button !== 0) return;
-    if (!runtime.roundEnded) return;
-    window.location.reload();
-  };
-  window.addEventListener('mousedown', onRoundEndMouseDown, true);
+  /**
+   * There used to be a window-level capture-phase `mousedown` here that called
+   * `window.location.reload()` whenever `roundEnded` was set. Capture fires
+   * before any button's `click`, so it swallowed NEW ROUND and CHANGE ARENA and
+   * reloaded the page instead — and because the reload wiped module state, the
+   * round director's `clearedRounds` reset every round and the rule ladder
+   * never advanced. Gamepad players were unaffected, since activating a control
+   * dispatches `click` without `mousedown`, which is why it survived testing.
+   * The round-end screen has its own buttons; nothing needs a global handler.
+   */
 
   const shoot = (): boolean => {
     if (runtime.roundEnded) return false;

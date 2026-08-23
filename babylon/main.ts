@@ -83,12 +83,42 @@ const mobileStickKnobEl = req<HTMLDivElement>('mobile-stick-knob');
 const mobileShootEl = req<HTMLButtonElement>('mobile-shoot');
 const mobileLandscapeWarningEl = req<HTMLDivElement>('mobile-landscape-warning');
 
-const engine = new Engine(canvas, true, {
-  preserveDrawingBuffer: true,
-  adaptToDeviceRatio: true,
-});
+/** Hide the boot overlay so whatever we show next is actually visible. */
+function dismissBootOverlay(): void {
+  document.getElementById('boot-overlay')?.classList.add('hidden');
+}
+
+/**
+ * The engine constructor throws when WebGL is unavailable — no GPU, a
+ * blocklisted driver, hardware acceleration switched off. It runs before all
+ * the DOM wiring below, so an uncaught throw left the visitor looking at a
+ * fully painted menu where nothing was clickable and no message ever appeared,
+ * indistinguishable from the page simply being broken.
+ */
+let engine: Engine;
+try {
+  engine = new Engine(canvas, true, {
+    adaptToDeviceRatio: true,
+  });
+} catch (err) {
+  dismissBootOverlay();
+  document.getElementById('webgl-error')?.classList.remove('hidden');
+  throw err;
+}
 if (touchLikeDevice && window.devicePixelRatio > 2) engine.setHardwareScalingLevel(1.25);
 const scene = new Scene(engine);
+
+/**
+ * Context loss is routine on mobile: driver resets, sleep, a tab backgrounded
+ * too long. Babylon restores what it can by itself, but the player deserves to
+ * know why the picture stopped.
+ */
+engine.onContextLostObservable.add(() => {
+  showLockErrBanner('Graphics context lost. Reload the page to keep playing.');
+});
+engine.onContextRestoredObservable.add(() => {
+  hideLockErrBanner();
+});
 
 {
   const ipc = scene.imageProcessingConfiguration;
@@ -99,7 +129,21 @@ const scene = new Scene(engine);
 }
 
 const iblPath = `${import.meta.env.BASE_URL}assets/textures/environmentSpecular.env`;
-const envCube = CubeTexture.CreateFromPrefilteredData(iblPath, scene);
+/** Without the error callback a failed IBL fetch just leaves every PBR surface
+ *  unlit, with nothing anywhere to say why the arenas look flat and dark. */
+const envCube = new CubeTexture(
+  iblPath,
+  scene,
+  null,
+  false,
+  null,
+  null,
+  () => {
+    showLockErrBanner('Could not load the lighting data. The arenas will look flat.');
+  },
+  undefined,
+  /* prefiltered */ true,
+);
 scene.environmentTexture = envCube;
 scene.environmentIntensity = 0.84;
 
@@ -367,6 +411,9 @@ function goHome(): void {
   closeModals();
   closeNavMenu();
   gameActive = false;
+  /** Only `showHuntScreen` cleared this, so leaving an arena mid-round-end left
+   *  the flag set and `shoot()` refusing to fire in the next round. */
+  shootRuntime.roundEnded = false;
   resetMobileInput();
   roundEndEl.classList.add('hidden');
   pausedEl.classList.add('hidden');
@@ -536,8 +583,26 @@ envCards.forEach((card) => {
   });
 });
 
-envBtn.addEventListener('click', () => {
+/** Let the browser paint before a long synchronous task blocks the thread. */
+function nextPaint(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+/**
+ * Building an arena is one uninterrupted synchronous task — the duomo alone is
+ * ~1300 meshes. Called straight from the click handler it froze the picker with
+ * the button not even showing a pressed state, so the click looked ignored and
+ * players clicked again. Two yielded frames let the browser paint the disabled
+ * state and the label change first.
+ */
+async function enterSelectedArena(): Promise<void> {
   if (!selectedEnv) return;
+  const previousLabel = envBtn.textContent;
+  envBtn.disabled = true;
+  envBtn.textContent = 'BUILDING ARENA…';
+  await nextPaint();
+  await nextPaint();
+
   requestBestEffortFullscreen();
   clearWorld();
   arena = buildArenaScene(scene, selectedEnv);
@@ -552,6 +617,12 @@ envBtn.addEventListener('click', () => {
     );
   }
   showHuntScreen();
+  envBtn.disabled = false;
+  envBtn.textContent = previousLabel;
+}
+
+envBtn.addEventListener('click', () => {
+  void enterSelectedArena();
 });
 
 document.addEventListener('pointerlockchange', () => {
@@ -828,6 +899,9 @@ if (qEnv) {
 syncTopNav();
 syncSoundToggles();
 void GameAudio.load().catch(() => { });
+
+/** Every listener above is attached, so the menu is now genuinely interactive. */
+dismissBootOverlay();
 
 engine.runRenderLoop(() => {
   const dt = Math.min(engine.getDeltaTime() / 1000, 0.05);

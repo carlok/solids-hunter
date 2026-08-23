@@ -56,18 +56,26 @@ The prompt is recorded in `assets/duomo/prompts/`. **The generating tool is not
 recorded, and should be.** Image models differ materially in what they grant
 over their output, so this is an open gap rather than a settled position.
 
-## Environment lighting — provenance unconfirmed
+## Environment lighting — CC BY 4.0
 
 `assets/textures/environmentSpecular.env`
 
-A prefiltered IBL map that drives PBR reflections in every arena, and the only
-third-party-looking binary shipped to players. It was added without a recorded
-source. The filename matches Babylon.js's own sample environment, which would
-place it under the Babylon.js Assets repository (Apache-2.0), but that has
-**not** been confirmed and is not asserted here.
+- Source: [BabylonJS/Assets](https://github.com/BabylonJS/Assets), served as
+  `https://assets.babylonjs.com/core/environments/environmentSpecular.env`
+- Licence: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+- **Modified:** no — byte-for-byte identical to the upstream file
+  (MD5 `21b51fbf433e33c002a3daa5d1014511`, 273,974 bytes), verified by download
+  and comparison.
 
-**This needs resolving:** confirm and attribute the origin, or replace it with a
-map of known provenance.
+The prefiltered IBL map that drives PBR reflections in every arena, and the only
+third-party binary shipped to players. It was originally committed with no
+recorded source; the origin was established afterwards by matching the file
+against Babylon's published asset.
+
+Note this is **CC BY 4.0**, not the Apache-2.0 that covers `@babylonjs/core` —
+the assets repository carries a different licence from the engine. Attribution
+is therefore required wherever the game is distributed, and is given in the
+in-game credits.
 
 ## Sound effects — MIT, part of this project
 

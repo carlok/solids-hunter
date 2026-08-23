@@ -14,10 +14,23 @@ First-person hunt built with [Babylon.js](https://www.babylonjs.com/). Pick an a
 
 ## Hunt rules
 
-Each round draws a **random boolean rule** over the same seven colors and four shapes. Rules are always **satisfiable** (at least three matching solids are forced into the spawn set). Examples of what you might see:
+Each round draws a **random boolean rule** over the same seven colors and four shapes. Rules are always **satisfiable** — at least three matching solids are forced into the spawn set.
 
-- Simple: one color, one shape, or `NOT` on a single attribute  
-- Compound: `AND`, `OR`, and nested combinations (e.g. color `AND NOT` shape)
+There are nine rule families, and the pool you draw from widens as you clear rounds:
+
+| Family | Example | Matching pairs (of 28) |
+| --- | --- | --- |
+| `notColor` | `NOT Purple` | 24 |
+| `notShape` | `NOT Sphere` | 21 |
+| `orShape` | `Cylinder OR Sphere` | 14 |
+| `orColor` | `Purple OR Red` | 8 |
+| `compound` | `(Cyan AND Cylinder) OR White` | 5 |
+| `andNot` | `Blue AND NOT Tetrahedron` | 3 |
+| `and` | `White AND Sphere` | 1 |
+| `andOr` | `Purple AND (Sphere OR Cylinder)` | 2 |
+| `doubleAnd` | `(Red AND Sphere) OR (Yellow AND Cube)` | 2 |
+
+The last two are the hardest: both ask you to hold two conditions at once.
 
 The pre-round screen and in-game HUD show the rule in plain language.
 
@@ -34,7 +47,11 @@ Each solid picks one of four **movement modes**:
 
 ## Adaptive rounds
 
-Each browser session starts at the current standard rules. After two fast, accurate clears, the next round can become modestly more demanding; low rule accuracy or game over makes the following round more forgiving. The adjustment is local, invisible, and only applies between rounds. It never changes the color palette, moves targets outside collision-safe bounds, or makes matching targets evade the player.
+Two separate things adjust between rounds.
+
+**Rule complexity climbs with every round you clear**, one rung of a five-rung ladder, holding at the top. A session opens on a deliberately gentle pool (`and`, `notColor`, `notShape`) and works up to one where the two-condition families live. Each rung also retires the rules that have stopped asking anything — `NOT Purple` matches 24 of the 28 spawnable pairs, so leaving it in the top pool would keep dealing rounds that are over before they start. This tracks clears only: a game over does not count, but neither does being slow or sloppy, so the boolean gets harder as long as you keep finishing rounds.
+
+**A separate director nudges one other axis at a time** — decoy composition, target count, movement mix, or speed. After two fast, accurate clears it asks for a little more; low accuracy or a game over makes the next round more forgiving. This adjustment is local, invisible, and only applies between rounds. It never changes the color palette, moves targets outside collision-safe bounds, or makes matching targets evade the player.
 
 ## Look and render quality
 

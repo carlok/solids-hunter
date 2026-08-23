@@ -42,6 +42,7 @@ import {
   type GamepadInputFrame,
 } from './gamepad-input';
 import { createGamepadMenu } from './gamepad-menu';
+import { createWatchdogState, tickWatchdog } from './quality-watchdog';
 import { attachBabylonShooting } from './shoot-input';
 import { createRoundDirector, recordRound, tuningForRound } from './round-director';
 import { bestSpawnYaw, hitsEntity, hitsWall } from './wall-collision';
@@ -231,18 +232,15 @@ ssao.minZAspect = 0.2;
  * expensive effect and re-measure. Never upgrades, so it settles instead of
  * oscillating between two states.
  */
-const QUALITY_TARGET_FPS = 45;
-const QUALITY_SAMPLE_SECONDS = 2;
-/** Skipped after a downgrade so the next window measures the new settings. */
-const QUALITY_SETTLE_SECONDS = 3;
 /**
- * Shader compilation makes the opening seconds of a round slow on every
- * machine, fast ones included. Measuring through that would strip effects from
- * hardware that never needed it, so the first window is only opened once the
- * round has actually settled.
+ * Ordered cheapest-looking to most drastic, but weighted toward what actually
+ * costs frames on the hardware this exists for. Resolution used to be last;
+ * on the fill-rate-bound integrated and mobile GPUs that trip the watchdog it
+ * is the single largest lever, so it now comes early and in two stages.
+ *
+ * The decision of *when* to apply these lives in `quality-watchdog.ts`, which
+ * is pure and tested; this list is only the actions.
  */
-const QUALITY_WARMUP_SECONDS = 5;
-
 const qualitySteps: readonly (() => void)[] = [
   () => {
     /**
@@ -253,53 +251,41 @@ const qualitySteps: readonly (() => void)[] = [
     scene.postProcessRenderPipelineManager.detachCamerasFromRenderPipeline(ssao.name, [camera]);
   },
   () => {
+    renderPipeline.samples = 1;
+  },
+  () => {
+    engine.setHardwareScalingLevel(Math.max(engine.getHardwareScalingLevel(), 1.25));
+  },
+  () => {
     renderPipeline.bloomKernel = 16;
     renderPipeline.bloomScale = 0.35;
   },
   () => {
-    renderPipeline.samples = 1;
+    engine.setHardwareScalingLevel(Math.max(engine.getHardwareScalingLevel(), 1.5));
   },
   () => {
     renderPipeline.bloomEnabled = false;
   },
-  () => {
-    engine.setHardwareScalingLevel(Math.max(engine.getHardwareScalingLevel(), 1.5));
-  },
 ];
 let qualityStep = 0;
-let qualityWindow = 0;
-let qualityFrames = 0;
-let qualitySettle = QUALITY_WARMUP_SECONDS;
+let watchdogState = createWatchdogState();
 
-function updateQualityWatchdog(dt: number): void {
+/**
+ * @param realDt wall-clock seconds since the previous frame, NOT the clamped
+ * simulation delta. Passing the clamped one made a 10fps device measure as
+ * 20fps and doubled every timer inside the watchdog.
+ */
+function updateQualityWatchdog(realDt: number): void {
   if (qualityStep >= qualitySteps.length) return;
-  /**
-   * A hidden tab throttles rAF to roughly 1Hz. Measuring through that would
-   * strip every effect from a machine that is perfectly capable of running them.
-   */
-  if (document.hidden || !gameActive) {
-    qualityWindow = 0;
-    qualityFrames = 0;
-    qualitySettle = QUALITY_WARMUP_SECONDS;
-    return;
+  const measurable = !document.hidden && gameActive;
+  const result = tickWatchdog(watchdogState, { realDt, measurable });
+  watchdogState = result.state;
+  for (let i = 0; i < result.applySteps && qualityStep < qualitySteps.length; i++) {
+    qualitySteps[qualityStep]!();
+    qualityStep++;
   }
-  if (qualitySettle > 0) {
-    qualitySettle -= dt;
-    return;
-  }
-  qualityWindow += dt;
-  qualityFrames++;
-  if (qualityWindow < QUALITY_SAMPLE_SECONDS) return;
-
-  const averageFps = qualityFrames / qualityWindow;
-  qualityWindow = 0;
-  qualityFrames = 0;
-  if (averageFps >= QUALITY_TARGET_FPS) return;
-
-  qualitySteps[qualityStep]!();
-  qualityStep++;
-  qualitySettle = QUALITY_SETTLE_SECONDS;
 }
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 let arena: ArenaBuildResult | null = null;
@@ -904,7 +890,10 @@ void GameAudio.load().catch(() => { });
 dismissBootOverlay();
 
 engine.runRenderLoop(() => {
-  const dt = Math.min(engine.getDeltaTime() / 1000, 0.05);
+  /** Clamped for the simulation so a long stall cannot teleport anything;
+   *  the watchdog needs the real elapsed time and takes `realDt` below. */
+  const realDt = engine.getDeltaTime() / 1000;
+  const dt = Math.min(realDt, 0.05);
   elapsedTime += dt;
   /** Coach modals freeze play; charging that time against the director's 60s
    *  "strong round" test would punish players for using the coach. */
@@ -1079,7 +1068,7 @@ engine.runRenderLoop(() => {
     camera.position.y = 1.7;
   }
 
-  updateQualityWatchdog(dt);
+  updateQualityWatchdog(realDt);
 
   if (devFpsEl) {
     devFpsTimer += dt;

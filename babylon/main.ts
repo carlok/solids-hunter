@@ -261,12 +261,29 @@ const qualitySteps: readonly (() => void)[] = [
     renderPipeline.bloomScale = 0.35;
   },
   () => {
+    /**
+     * The only step here that reduces draw calls rather than per-pixel work.
+     * A device that is CPU-bound on the duomo's ~1300 meshes cannot be rescued
+     * by any amount of resolution scaling, and the shadow pass is the cheapest
+     * half of that count to give up.
+     */
+    shadowsShedForPerformance = true;
+    arena?.setShadowsEnabled(false);
+  },
+  () => {
     engine.setHardwareScalingLevel(Math.max(engine.getHardwareScalingLevel(), 1.5));
   },
   () => {
     renderPipeline.bloomEnabled = false;
   },
 ];
+
+/** Downgrades already taken apply to the next arena too, not only the one that
+ *  tripped them — each arena builds a fresh shadow generator. */
+let shadowsShedForPerformance = false;
+function reapplyQualityStepsToArena(): void {
+  if (shadowsShedForPerformance) arena?.setShadowsEnabled(false);
+}
 let qualityStep = 0;
 let watchdogState = createWatchdogState();
 
@@ -569,9 +586,25 @@ envCards.forEach((card) => {
   });
 });
 
-/** Let the browser paint before a long synchronous task blocks the thread. */
+/**
+ * Let the browser paint before a long synchronous task blocks the thread.
+ *
+ * Raced against a timer because `requestAnimationFrame` does not fire at all
+ * while a tab is hidden. Waiting on it alone means a player who clicks ENTER
+ * and immediately switches tabs comes back to a button still reading
+ * "BUILDING ARENA…" with nothing having happened.
+ */
 function nextPaint(): Promise<void> {
-  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (): void => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    requestAnimationFrame(done);
+    window.setTimeout(done, 50);
+  });
 }
 
 /**
@@ -592,6 +625,7 @@ async function enterSelectedArena(): Promise<void> {
   requestBestEffortFullscreen();
   clearWorld();
   arena = buildArenaScene(scene, selectedEnv);
+  reapplyQualityStepsToArena();
   GameAudio.setArena(selectedEnv);
   camera.position.copyFrom(arena.spawnPosition);
   /** The arena's intended heading, overridden only when it faces geometry. */

@@ -11,6 +11,7 @@ import {
   MeshBuilder,
   PBRMaterial,
   PointLight,
+  RenderTargetTexture,
   Scene,
   ShadowGenerator,
   StandardMaterial,
@@ -52,6 +53,12 @@ export type ArenaBuildResult = {
   spawnYaw: number;
   /** Optional: register hunt entity bodies for shadow cast/receive after spawn. */
   registerEntityShadowMeshes?: (bodies: AbstractMesh[]) => void;
+  /**
+   * Turn the arena's shadow pass off entirely. The quality watchdog's other
+   * steps all trim per-pixel work; on an arena like the duomo the bottleneck is
+   * the draw call count, and this is the only lever that touches it.
+   */
+  setShadowsEnabled: (enabled: boolean) => void;
   dispose: () => void;
 };
 
@@ -1203,6 +1210,22 @@ export function attachArenaShadows(
   sg.bias = 0.00035;
   sg.normalBias = 0.012;
 
+  /**
+   * Re-render the depth map every other frame rather than every frame.
+   *
+   * Almost every caster in an arena is static — the duomo alone puts ~1170
+   * pillar meshes through this pass, and they never move. Only the dozen-odd
+   * hunt solids do. Babylon keys shadow generators by (light, camera), so a
+   * static generator and a dynamic one cannot share a light and the two sets
+   * cannot be split; halving the cadence is the honest way to halve the cost.
+   *
+   * The lag this introduces is a solid's own shadow trailing it by one frame.
+   * The fastest movement mode tops out near 4 units/sec, so at 60fps that is
+   * about 7cm of drift on a shadow cast from overhead — well under what the
+   * PCF blur already softens away.
+   */
+  sg.getShadowMap()!.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONEVERYTWOFRAMES;
+
   for (const m of meshes) {
     if (!meshIsLitGeometry(m)) continue;
     m.receiveShadows = true;
@@ -1234,6 +1257,10 @@ export function makeArenaBuildResult(
     envSpawnHalfXZ,
     spawnPosition,
     spawnYaw,
+    setShadowsEnabled(enabled: boolean) {
+      const light = shadowGen?.getLight();
+      if (light) light.shadowEnabled = enabled;
+    },
     registerEntityShadowMeshes(bodies: AbstractMesh[]) {
       if (!shadowGen) return;
       for (const stale of entityCasters) {

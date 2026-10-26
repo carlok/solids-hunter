@@ -15,9 +15,9 @@
     "@babylonjs/core": "^7.54.3"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^4.1.12",
     "typescript": "^5.7.3",
-    "vite": "^6.4.3",
-    "vitest": "^4.1.11"
+    "vite": "^6.4.5",
+    "vitest": "^4.1.12"
   }
 }
